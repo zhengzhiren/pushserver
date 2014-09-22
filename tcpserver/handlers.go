@@ -4,7 +4,7 @@ import (
 	"net"
 	"log"
 
-	"pushserver/packet"
+	"github.com/zhengzhiren/pushserver/packet"
 )
 
 type PktHandler func (conn *net.TCPConn, pkt *packet.Pkt)

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"io"
 
-	"pushserver/packet"
+	"github.com/zhengzhiren/pushserver/packet"
 )
 
 

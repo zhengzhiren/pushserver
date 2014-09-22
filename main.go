@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"pushserver/tcpserver"
+	"github.com/zhengzhiren/pushserver/tcpserver"
 )
 
 func main() {

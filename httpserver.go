@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"pushserver/tcpserver"
+	"github.com/zhengzhiren/pushserver/tcpserver"
 )
 
 func StartHttp() {

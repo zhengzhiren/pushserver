@@ -8,8 +8,8 @@ import (
 	"time"
 	"io"
 
-	"pushserver/packet"
-	"pushserver/tcpserver"
+	"github.com/zhengzhiren/pushserver/packet"
+	"github.com/zhengzhiren/pushserver/tcpserver"
 )
 
 var pktHandlers = map[uint8]tcpserver.PktHandler {}
