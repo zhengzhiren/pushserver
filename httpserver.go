@@ -5,8 +5,11 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"strconv"
 
+	"github.com/garyburd/redigo/redis"
 	"github.com/zhengzhiren/pushserver/tcpserver"
+	"github.com/zhengzhiren/pushserver/packet"
 )
 
 func StartHttp() {
@@ -29,21 +32,62 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Proto: %q\n", r.Proto)
 
 	// forms
-	var clientid, msg string = "", ""
 	r.ParseForm()
-	fmt.Fprintf(w, "\nForm values: %d\n", len(r.Form))
-	for key, value := range r.Form {
-		fmt.Fprintf(w, "%s: %s\n", key, value)
-		switch key {
-		case "clientid":
-			clientid = value[0]
-		case "msg":
-			msg = value[0]
-		default:
-
+	clientid := r.FormValue("clientid")
+	msg := r.FormValue("msg")
+	expire_str := r.FormValue("expire")
+	var expire = 0
+	var err error
+	if expire_str != "" {
+		expire, err = strconv.Atoi(expire_str)
+		if err != nil {
+			log.Printf("expire format error: %s", err.Error())
+			return
 		}
 	}
-	log.Printf("clientid: %s, msg: %s\n", clientid, msg)
+
+	fmt.Fprintf(w, "\nForm values:\n")
+	fmt.Fprintf(w, "clientid: %s\n", clientid)
+	fmt.Fprintf(w, "msg: %s\n", msg)
+	fmt.Fprintf(w, "expire: %d (s)\n", expire)
+
+	// connect to Redis
+	redisConn, err := redis.Dial("tcp", ":6379")
+	if err != nil {
+		log.Printf("Dial redix error: %s", err.Error())
+	}
+
+	// get new message Id
+	n, err := redisConn.Do("INCR", "msg_id")
+	if err != nil {
+		log.Printf("Error on save message to redis: %s", err.Error())
+		return
+	}
+	msg_id, ok := n.(int64)
+	if (!ok) {
+		log.Printf("Error on msg_id")
+		return
+	}
+	fmt.Fprintf(w, "msd_id: %d\n", msg_id)
+
+	// store in HashMap
+	key := "msg:" + strconv.FormatInt(msg_id, 10)
+	_, err = redisConn.Do("HMSET", key, "msg", msg, "clientid", clientid, "expire", expire)
+	if err != nil {
+		log.Printf("Error on saving message to redis: %s", err.Error())
+		return
+	}
+
+	pktDataMsg := packet.PktDataMessage {
+		Msg : msg,
+	}
+
+	var pkt *packet.Pkt
+	pkt, err = packet.Pack(packet.PKT_Push, 0, &pktDataMsg)
+	if err != nil {
+		log.Printf("Error on pack message: %s", err.Error())
+		return
+	}
 
 	clientCount := 0
 	tcpserver.ClientMapLock.RLock();
@@ -51,7 +95,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	for _, client := range tcpserver.ClientMap {
 		fmt.Fprintf(w, "Client Id: %s\n", client.Id);
 		if clientid == "" || clientid == client.Id {
-			client.Conn.Write([]byte(msg))
+			client.PktChan <- pkt
 			fmt.Fprintf(w, "Message has been pushed to %s\n", client.Conn.RemoteAddr().String())
 			clientCount++
 		}

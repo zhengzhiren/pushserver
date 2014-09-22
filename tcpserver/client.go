@@ -3,12 +3,14 @@ package tcpserver
 import (
 	"net"
 	"sync"
+
+	"github.com/zhengzhiren/pushserver/packet"
 )
 
 type Client struct {
 	Conn *net.TCPConn
 	Id string
-	MsgChan chan *Message
+	PktChan chan *packet.Pkt
 }
 
 var (

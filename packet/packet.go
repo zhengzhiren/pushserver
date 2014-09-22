@@ -73,3 +73,7 @@ func Unpack(pkt *Pkt, data interface{}) error {
 type PktDataRegist struct {
 	DevId string
 }
+
+type PktDataMessage struct {
+	Msg string
+}

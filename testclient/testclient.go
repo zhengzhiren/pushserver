@@ -30,6 +30,8 @@ func main() {
 		conn.Close()
 	}()
 
+	rand.Seed(time.Now().Unix())
+
 	dataRegist := packet.PktDataRegist {
 		DevId: strconv.Itoa(rand.Int() % 10000),		// a random Id
 	}
@@ -121,6 +123,12 @@ func init() {
 }
 
 func HandlePush(conn *net.TCPConn, pkt *packet.Pkt) {
+	dataMsg := packet.PktDataMessage{}
+	err := packet.Unpack(pkt, &dataMsg)
+	if err != nil {
+		log.Printf("Error unpack push msg: %s", err.Error())
+	}
+	log.Printf("Received push message: %s\n", dataMsg.Msg)
 }
 
 func HandleACK(conn *net.TCPConn, pkt *packet.Pkt) {
