@@ -1,20 +1,21 @@
 package main
 
 import (
-	"net"
+	"io"
 	"log"
 	"math/rand"
+	"net"
 	"strconv"
 	"time"
-	"io"
 
 	"github.com/zhengzhiren/pushserver/packet"
 	"github.com/zhengzhiren/pushserver/tcpserver"
 )
 
-var pktHandlers = map[uint8]tcpserver.PktHandler {}
+var pktHandlers = map[uint8]tcpserver.PktHandler{}
 
 func main() {
+	log.SetPrefix("testclient ")
 	raddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:9999")
 	if err != nil {
 		log.Printf("Unknown address: %s", err.Error())
@@ -32,9 +33,11 @@ func main() {
 
 	rand.Seed(time.Now().Unix())
 
-	dataRegist := packet.PktDataRegist {
-		DevId: strconv.Itoa(rand.Int() % 10000),		// a random Id
+	dataRegist := packet.PktDataRegist{
+		DevId: strconv.Itoa(rand.Int() % 10000), // a random Id
 	}
+	dataRegist.AppIds = append(dataRegist.AppIds, "app1")
+	dataRegist.AppIds = append(dataRegist.AppIds, "app2")
 
 	registPkt, err := packet.Pack(packet.PKT_Regist, uint32(rand.Int()), dataRegist)
 	if err != nil {
@@ -46,6 +49,7 @@ func main() {
 	if err != nil {
 		log.Printf("Serialize error: %s", err.Error())
 	}
+	log.Printf(string(registPkt.Data))
 	conn.Write(b)
 
 	var bufHeader = make([]byte, packet.PKT_HEADER_SIZE)
@@ -77,8 +81,8 @@ func main() {
 		}
 		log.Printf("%d bytes packet header read\n", nbytes)
 
-		var pkt = packet.Pkt {
-			Data : nil,
+		var pkt = packet.Pkt{
+			Data: nil,
 		}
 		pkt.Header.Deserialize(bufHeader)
 
@@ -109,7 +113,7 @@ func main() {
 }
 
 func handlePacket(conn *net.TCPConn, pkt *packet.Pkt) {
-	handler, ok := pktHandlers[pkt.Header.Type];
+	handler, ok := pktHandlers[pkt.Header.Type]
 	if ok {
 		handler(conn, pkt)
 	} else {

@@ -8,23 +8,23 @@ import (
 
 // packet type
 const (
-	PKT_Regist		= uint8(1)
-	PKT_ACK			= uint8(2)
-	PKT_Heartbeat	= uint8(3)
-	PKT_Push		= uint8(4)
+	PKT_Regist    = uint8(1)
+	PKT_ACK       = uint8(2)
+	PKT_Heartbeat = uint8(3)
+	PKT_Push      = uint8(4)
 )
 
 const PKT_HEADER_SIZE = 9
 
 type PktHeader struct {
 	Type uint8
-	Len  uint32		// data length, not including header length
-	Id uint32
+	Len  uint32 // data length, not including header length
+	Id   uint32
 }
 
 type Pkt struct {
 	Header PktHeader
-	Data []byte
+	Data   []byte
 }
 
 // Pkt to bytes
@@ -40,7 +40,7 @@ func (this *Pkt) Serialize() ([]byte, error) {
 }
 
 // bytes to PktHeader
-func (this *PktHeader) Deserialize(b []byte) (error) {
+func (this *PktHeader) Deserialize(b []byte) error {
 	buf := bytes.NewReader(b)
 	if err := binary.Read(buf, binary.BigEndian, this); err != nil {
 		return err
@@ -48,7 +48,7 @@ func (this *PktHeader) Deserialize(b []byte) (error) {
 	return nil
 }
 
-func Pack (pktType uint8, pktId uint32, data interface {}) (*Pkt, error) {
+func Pack(pktType uint8, pktId uint32, data interface{}) (*Pkt, error) {
 	buf, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
@@ -71,7 +71,8 @@ func Unpack(pkt *Pkt, data interface{}) error {
 }
 
 type PktDataRegist struct {
-	DevId string
+	DevId  string
+	AppIds []string
 }
 
 type PktDataMessage struct {

@@ -1,29 +1,28 @@
 package tcpserver
 
 import (
-	"net"
-	"log"
-	"time"
-	"sync"
 	"io"
+	"log"
+	"net"
+	"sync"
+	"time"
 
 	"github.com/zhengzhiren/pushserver/packet"
 )
 
-
 type TcpServer struct {
-	exitChan chan bool
-	waitGroup *sync.WaitGroup
+	exitChan    chan bool
+	waitGroup   *sync.WaitGroup
 	pktHandlers map[uint8]PktHandler
 }
 
-func Create() *TcpServer{
-	server := &TcpServer {
-		exitChan: make(chan bool),
-		waitGroup: &sync.WaitGroup{},
+func Create() *TcpServer {
+	server := &TcpServer{
+		exitChan:    make(chan bool),
+		waitGroup:   &sync.WaitGroup{},
 		pktHandlers: map[uint8]PktHandler{},
 	}
-	server.pktHandlers[packet.PKT_Regist] = HandleRegist
+	//server.pktHandlers[packet.PKT_Regist] = HandleRegist
 	server.pktHandlers[packet.PKT_Heartbeat] = HandleHeartbeat
 	server.pktHandlers[packet.PKT_ACK] = HandleACK
 	return server
@@ -33,7 +32,7 @@ func (this *TcpServer) Start() {
 	log.Printf("Starting TcpServer\n")
 	laddr, _ := net.ResolveTCPAddr("tcp", "0.0.0.0:9999")
 	ln, err := net.ListenTCP("tcp", laddr)
-	if (err != nil) {
+	if err != nil {
 		log.Printf("Failed to start TcpServer: %s", err.Error())
 		return
 	}
@@ -61,7 +60,7 @@ func (this *TcpServer) Start() {
 
 		ln.SetDeadline(time.Now().Add(time.Second))
 		conn, err := ln.AcceptTCP()
-		if (err != nil) {
+		if err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				// just accept timeout, not an error
 				continue
@@ -83,15 +82,9 @@ func (this *TcpServer) Stop() {
 func (this *TcpServer) handleConn(conn *net.TCPConn) {
 	this.waitGroup.Add(1)
 	log.Printf("New conn accepted from %s\n", conn.RemoteAddr().String())
-
-	defer func() {
-		conn.Close()
-		//FIXME: remove conn
-		//ClientMapLock.Lock()
-		//delete(ClientMap, client.Id)
-		//ClientMapLock.Unlock()
-		this.waitGroup.Done()
-	}()
+	var (
+		client *Client = nil
+	)
 
 	var bufHeader = make([]byte, packet.PKT_HEADER_SIZE)
 	for {
@@ -99,7 +92,7 @@ func (this *TcpServer) handleConn(conn *net.TCPConn) {
 		select {
 		case <-this.exitChan:
 			log.Printf("Closing connection from %s.\n", conn.RemoteAddr().String())
-			return
+			goto Out
 		default:
 			// continue read
 		}
@@ -112,7 +105,7 @@ func (this *TcpServer) handleConn(conn *net.TCPConn) {
 		if err != nil {
 			if err == io.EOF {
 				log.Printf("read EOF, closing connection")
-				return
+				goto Out
 			} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				// just read timeout, not an error
 				continue
@@ -122,8 +115,8 @@ func (this *TcpServer) handleConn(conn *net.TCPConn) {
 		}
 		log.Printf("%d bytes packet header read\n", nbytes)
 
-		var pkt = packet.Pkt {
-			Data : nil,
+		var pkt = packet.Pkt{
+			Data: nil,
 		}
 		pkt.Header.Deserialize(bufHeader)
 
@@ -136,7 +129,7 @@ func (this *TcpServer) handleConn(conn *net.TCPConn) {
 			if err != nil {
 				if err == io.EOF {
 					log.Printf("read EOF, closing connection")
-					return
+					goto Out
 				} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 					// read timeout
 					//TODO
@@ -150,12 +143,28 @@ func (this *TcpServer) handleConn(conn *net.TCPConn) {
 			pkt.Data = bufData
 		}
 
-		this.handlePacket(conn, &pkt)
+		if pkt.Header.Type == packet.PKT_Regist {
+			client = HandleRegist(conn, &pkt)
+			if client == nil {
+				goto Out
+			}
+		} else {
+			this.handlePacket(conn, &pkt)
+		}
 	}
+
+Out:
+	conn.Close()
+	if client != nil {
+		ClientMapLock.Lock()
+		delete(ClientMap, client.Id)
+		ClientMapLock.Unlock()
+	}
+	this.waitGroup.Done()
 }
 
 func (this *TcpServer) handlePacket(conn *net.TCPConn, pkt *packet.Pkt) {
-	handler, ok := this.pktHandlers[pkt.Header.Type];
+	handler, ok := this.pktHandlers[pkt.Header.Type]
 	if ok {
 		handler(conn, pkt)
 	} else {
