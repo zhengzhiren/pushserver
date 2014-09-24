@@ -1,22 +1,68 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/zhengzhiren/pushserver/packet"
-	"github.com/zhengzhiren/pushserver/tcpserver"
 )
 
-var pktHandlers = map[uint8]tcpserver.PktHandler{}
+var (
+	AppIds   []string
+	DeviceId = ""
+)
 
 func main() {
 	log.SetPrefix("testclient ")
-	raddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:9999")
+
+	dst := ""
+
+	for i := 1; i < len(os.Args); i++ {
+		switch os.Args[i] {
+		case "-i": // device id
+			i++
+			if i >= len(os.Args) {
+				fmt.Printf("missing argument for \"-i\"\n")
+				return
+			}
+			DeviceId = os.Args[i]
+		case "-a": // appid
+			i++
+			if i >= len(os.Args) {
+				fmt.Printf("missing argument for \"-a\"\n")
+				return
+			}
+			AppIds = append(AppIds, os.Args[i])
+		default:
+			if dst == "" {
+				dst = os.Args[i]
+			} else {
+				fmt.Printf("unknown argument %s\n", os.Args[i])
+				return
+			}
+		}
+	}
+
+	if dst == "" {
+		fmt.Printf("no destination address\n")
+		return
+	}
+	if len(AppIds) == 0 {
+		fmt.Printf("no AppId on this device\n")
+		return
+	}
+	if DeviceId == "" {
+		rand.Seed(time.Now().Unix())
+		DeviceId = strconv.Itoa(rand.Int() % 10000) // a random Id
+	}
+
+	raddr, err := net.ResolveTCPAddr("tcp", dst)
 	if err != nil {
 		log.Printf("Unknown address: %s", err.Error())
 		return
@@ -31,25 +77,21 @@ func main() {
 		conn.Close()
 	}()
 
-	rand.Seed(time.Now().Unix())
-
-	dataRegist := packet.PktDataRegist{
-		DevId: strconv.Itoa(rand.Int() % 10000), // a random Id
+	dataInit := packet.PktDataInit{
+		DevId: DeviceId,
 	}
-	dataRegist.AppIds = append(dataRegist.AppIds, "app1")
-	dataRegist.AppIds = append(dataRegist.AppIds, "app2")
 
-	registPkt, err := packet.Pack(packet.PKT_Regist, uint32(rand.Int()), dataRegist)
+	initPkt, err := packet.Pack(packet.PKT_Init, uint32(rand.Int()), dataInit)
 	if err != nil {
 		log.Printf("Pack error: %s", err.Error())
 		return
 	}
 
-	b, err := registPkt.Serialize()
+	b, err := initPkt.Serialize()
 	if err != nil {
 		log.Printf("Serialize error: %s", err.Error())
 	}
-	log.Printf(string(registPkt.Data))
+	log.Printf(string(initPkt.Data))
 	conn.Write(b)
 
 	var bufHeader = make([]byte, packet.PKT_HEADER_SIZE)
@@ -113,7 +155,7 @@ func main() {
 }
 
 func handlePacket(conn *net.TCPConn, pkt *packet.Pkt) {
-	handler, ok := pktHandlers[pkt.Header.Type]
+	handler, ok := PktHandlers[pkt.Header.Type]
 	if ok {
 		handler(conn, pkt)
 	} else {
@@ -122,18 +164,7 @@ func handlePacket(conn *net.TCPConn, pkt *packet.Pkt) {
 }
 
 func init() {
-	pktHandlers[packet.PKT_Push] = HandlePush
-	pktHandlers[packet.PKT_ACK] = HandleACK
-}
-
-func HandlePush(conn *net.TCPConn, pkt *packet.Pkt) {
-	dataMsg := packet.PktDataMessage{}
-	err := packet.Unpack(pkt, &dataMsg)
-	if err != nil {
-		log.Printf("Error unpack push msg: %s", err.Error())
-	}
-	log.Printf("Received push message: %s\n", dataMsg.Msg)
-}
-
-func HandleACK(conn *net.TCPConn, pkt *packet.Pkt) {
+	PktHandlers[packet.PKT_Init_Resp] = HandleInit_Resp
+	PktHandlers[packet.PKT_Push] = HandlePush
+	PktHandlers[packet.PKT_ACK] = HandleACK
 }

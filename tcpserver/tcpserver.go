@@ -22,7 +22,7 @@ func Create() *TcpServer {
 		waitGroup:   &sync.WaitGroup{},
 		pktHandlers: map[uint8]PktHandler{},
 	}
-	//server.pktHandlers[packet.PKT_Regist] = HandleRegist
+	server.pktHandlers[packet.PKT_Regist] = HandleRegist
 	server.pktHandlers[packet.PKT_Heartbeat] = HandleHeartbeat
 	server.pktHandlers[packet.PKT_ACK] = HandleACK
 	return server
@@ -139,17 +139,17 @@ func (this *TcpServer) handleConn(conn *net.TCPConn) {
 				log.Printf("read error: %s\n", err.Error())
 				continue
 			}
-			log.Printf("%d bytes packet data read\n", nbytes)
+			log.Printf("%d bytes packet data read: %s\n", nbytes, bufData)
 			pkt.Data = bufData
 		}
 
-		if pkt.Header.Type == packet.PKT_Regist {
-			client = HandleRegist(conn, &pkt)
+		if pkt.Header.Type == packet.PKT_Init {
+			client = HandleInit(conn, &pkt)
 			if client == nil {
 				goto Out
 			}
 		} else {
-			this.handlePacket(conn, &pkt)
+			this.handlePacket(client, &pkt)
 		}
 	}
 
@@ -163,10 +163,10 @@ Out:
 	this.waitGroup.Done()
 }
 
-func (this *TcpServer) handlePacket(conn *net.TCPConn, pkt *packet.Pkt) {
+func (this *TcpServer) handlePacket(client *Client, pkt *packet.Pkt) {
 	handler, ok := this.pktHandlers[pkt.Header.Type]
 	if ok {
-		handler(conn, pkt)
+		handler(client, pkt)
 	} else {
 		log.Printf("Unknown packet type: %d", pkt.Header.Type)
 	}

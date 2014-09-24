@@ -21,9 +21,10 @@ var (
 	ClientMapLock = sync.RWMutex{} //lock for the ClientMap
 )
 
-func (this *Client) SendMsg(msg string) error {
+func (this *Client) SendMsg(msg string, appid string) error {
 	pktDataMsg := packet.PktDataMessage{
-		Msg: msg,
+		Msg:   msg,
+		AppId: appid,
 	}
 
 	pkt, err := packet.Pack(packet.PKT_Push, 0, &pktDataMsg)

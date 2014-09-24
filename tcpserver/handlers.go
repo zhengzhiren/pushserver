@@ -10,12 +10,12 @@ import (
 	"github.com/zhengzhiren/pushserver/packet"
 )
 
-type PktHandler func(conn *net.TCPConn, pkt *packet.Pkt)
+type PktHandler func(client *Client, pkt *packet.Pkt)
 
-func HandleRegist(conn *net.TCPConn, pkt *packet.Pkt) *Client {
+func HandleInit(conn *net.TCPConn, pkt *packet.Pkt) *Client {
 	log.Printf("Handling packet type: Regist")
-	var dataRegist = packet.PktDataRegist{}
-	err := packet.Unpack(pkt, &dataRegist)
+	var dataInit = packet.PktDataInit{}
+	err := packet.Unpack(pkt, &dataInit)
 	if err != nil {
 		log.Printf("Failed to Unpack: %s", err.Error())
 		return nil
@@ -25,9 +25,8 @@ func HandleRegist(conn *net.TCPConn, pkt *packet.Pkt) *Client {
 
 	client := Client{
 		Conn:          conn,
-		Id:            dataRegist.DevId,
+		Id:            dataInit.DevId,
 		PktChan:       make(chan *packet.Pkt),
-		AppIds:        dataRegist.AppIds,
 		LastHeartbeat: time.Now(),
 	}
 
@@ -54,11 +53,25 @@ func HandleRegist(conn *net.TCPConn, pkt *packet.Pkt) *Client {
 		}
 	}()
 
+	// send Response for the Init packet
+	dataInitResp := packet.PktDataInitResp{}
+
+	initRespPkt, err := packet.Pack(packet.PKT_Init_Resp, 0, dataInitResp)
+	if err != nil {
+		log.Printf("Pack error: %s", err.Error())
+		return nil
+	}
+
+	b, err := initRespPkt.Serialize()
+	if err != nil {
+		log.Printf("Serialize error: %s", err.Error())
+		return nil
+	}
+	conn.Write(b)
+
 	ClientMapLock.Lock()
 	ClientMap[client.Id] = &client
 	ClientMapLock.Unlock()
-
-	SendOfflineMsg(&client)
 
 	return &client
 }
@@ -114,7 +127,7 @@ func SendOfflineMsg(client *Client) {
 			log.Printf("expire_time: %d, msg: %s", expire_time, msg)
 			if expire_time > current_time {
 				// message hasn't expired, need to send it
-				client.SendMsg(msg)
+				client.SendMsg(msg, appid)
 			}
 		}
 	}
@@ -123,8 +136,19 @@ Out:
 	redisConn.Close()
 }
 
-func HandleHeartbeat(conn *net.TCPConn, pkt *packet.Pkt) {
+func HandleRegist(client *Client, pkt *packet.Pkt) {
+	var dataRegist = packet.PktDataRegist{}
+	err := packet.Unpack(pkt, &dataRegist)
+	if err != nil {
+		log.Printf("Failed to Unpack: %s", err.Error())
+	}
+	log.Printf("Device [%s] regist %s", client.Id, dataRegist.AppIds)
+	client.AppIds = append(client.AppIds, dataRegist.AppIds...)
+	SendOfflineMsg(client)
 }
 
-func HandleACK(conn *net.TCPConn, pkt *packet.Pkt) {
+func HandleHeartbeat(client *Client, pkt *packet.Pkt) {
+}
+
+func HandleACK(client *Client, pkt *packet.Pkt) {
 }

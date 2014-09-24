@@ -1,6 +1,34 @@
 package main
 
-var PktHandlers = map[uint8]tcpserver.PktHandler{}
+import (
+	"log"
+	"net"
+
+	"github.com/zhengzhiren/pushserver/packet"
+)
+
+type PktHandler func(conn *net.TCPConn, pkt *packet.Pkt)
+
+var PktHandlers = map[uint8]PktHandler{}
+
+// Received response for the init packet, send Regist packet
+func HandleInit_Resp(conn *net.TCPConn, pkt *packet.Pkt) {
+	dataRegist := packet.PktDataRegist{
+		AppIds: AppIds,
+	}
+
+	pktRegist, err := packet.Pack(packet.PKT_Regist, 0, &dataRegist)
+	if err != nil {
+		log.Printf("Pack error: %s", err.Error())
+		return
+	}
+
+	b, err := pktRegist.Serialize()
+	if err != nil {
+		log.Printf("Serialize error: %s", err.Error())
+	}
+	conn.Write(b)
+}
 
 func HandlePush(conn *net.TCPConn, pkt *packet.Pkt) {
 	dataMsg := packet.PktDataMessage{}

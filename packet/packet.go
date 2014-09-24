@@ -8,18 +8,22 @@ import (
 
 // packet type
 const (
-	PKT_Regist    = uint8(1)
-	PKT_ACK       = uint8(2)
-	PKT_Heartbeat = uint8(3)
-	PKT_Push      = uint8(4)
+	PKT_Init        = iota
+	PKT_Init_Resp   = iota
+	PKT_Regist      = iota
+	PKT_Regist_Resp = iota
+	PKT_ACK         = iota
+	PKT_Heartbeat   = iota
+	PKT_Push        = iota
 )
 
-const PKT_HEADER_SIZE = 9
+const PKT_HEADER_SIZE = 10
 
 type PktHeader struct {
 	Type uint8
-	Len  uint32 // data length, not including header length
+	Ver  uint8
 	Id   uint32
+	Len  uint32 // data length, not including header length
 }
 
 type Pkt struct {
@@ -70,11 +74,18 @@ func Unpack(pkt *Pkt, data interface{}) error {
 	return nil
 }
 
+type PktDataInit struct {
+	DevId string
+}
+
+type PktDataInitResp struct {
+}
+
 type PktDataRegist struct {
-	DevId  string
 	AppIds []string
 }
 
 type PktDataMessage struct {
-	Msg string
+	Msg   string
+	AppId string
 }

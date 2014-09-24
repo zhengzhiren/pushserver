@@ -118,22 +118,27 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// send the message
-	clientCount := 0
+	// send the message to online devices
+	sendCount := 0
 	tcpserver.ClientMapLock.RLock()
 	fmt.Fprintf(w, "\nClients online: %d\n", len(tcpserver.ClientMap))
 	for _, client := range tcpserver.ClientMap {
 		fmt.Fprintf(w, "Client Id: %s\n", client.Id)
 		if deviceid == "" || deviceid == client.Id {
-			err = client.SendMsg(msg)
-			if err != nil {
-				log.Printf("Error on sending message: %s", err.Error())
-				return
+			for _, v := range client.AppIds {
+				if appid == v {
+					err = client.SendMsg(msg, appid)
+					if err != nil {
+						log.Printf("Error on sending message: %s", err.Error())
+						return
+					}
+					fmt.Fprintf(w, "Message has been pushed to %s\n", client.Conn.RemoteAddr().String())
+					sendCount++
+					break
+				}
 			}
-			fmt.Fprintf(w, "Message has been pushed to %s\n", client.Conn.RemoteAddr().String())
-			clientCount++
 		}
 	}
 	tcpserver.ClientMapLock.RUnlock()
-	fmt.Fprintf(w, "\nMessage has been pushed to %d clients\n", clientCount)
+	fmt.Fprintf(w, "\nMessage has been pushed to %d clients\n", sendCount)
 }
