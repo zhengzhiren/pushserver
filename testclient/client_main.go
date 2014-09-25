@@ -13,10 +13,19 @@ import (
 	"github.com/zhengzhiren/pushserver/packet"
 )
 
+const CHAN_LEN = 10
+
 var (
 	AppIds   []string
 	DeviceId = ""
+	OutPkt = make(chan *packet.Pkt, CHAN_LEN)
 )
+
+func init() {
+	PktHandlers[packet.PKT_Init_Resp] = HandleInit_Resp
+	PktHandlers[packet.PKT_Regist_Resp] = HandleRegist_Resp
+	PktHandlers[packet.PKT_Push] = HandlePush
+}
 
 func main() {
 	log.SetPrefix("testclient ")
@@ -94,6 +103,26 @@ func main() {
 	log.Printf(string(initPkt.Data))
 	conn.Write(b)
 
+	go func() {
+		timer := time.NewTicker(20 * time.Second)
+		hbPkt, _ := packet.Pack(packet.PKT_Heartbeat, 0, nil)
+		heartbeat, _ := hbPkt.Serialize()
+		for {
+			select {
+			//case <- done:
+			//	break
+			case pkt := <-OutPkt:
+				b, err := pkt.Serialize()
+				if err != nil {
+					log.Printf("Serialize error: %s", err.Error())
+				}
+				conn.Write(b)
+			case <-timer.C:
+				conn.Write(heartbeat)
+			}
+		}
+	}()
+
 	var bufHeader = make([]byte, packet.PKT_HEADER_SIZE)
 	for {
 		//// check if we are exiting
@@ -146,7 +175,7 @@ func main() {
 				log.Printf("read error: %s\n", err.Error())
 				continue
 			}
-			log.Printf("%d bytes packet data read\n", nbytes)
+			log.Printf("%d bytes packet data read: %s\n", nbytes, bufData)
 			pkt.Data = bufData
 		}
 
@@ -161,10 +190,4 @@ func handlePacket(conn *net.TCPConn, pkt *packet.Pkt) {
 	} else {
 		log.Printf("Unknown packet type: %d", pkt.Header.Type)
 	}
-}
-
-func init() {
-	PktHandlers[packet.PKT_Init_Resp] = HandleInit_Resp
-	PktHandlers[packet.PKT_Push] = HandlePush
-	PktHandlers[packet.PKT_ACK] = HandleACK
 }

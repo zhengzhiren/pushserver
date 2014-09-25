@@ -54,7 +54,9 @@ func HandleInit(conn *net.TCPConn, pkt *packet.Pkt) *Client {
 	}()
 
 	// send Response for the Init packet
-	dataInitResp := packet.PktDataInitResp{}
+	dataInitResp := packet.PktDataInitResp{
+		Result: true,
+	}
 
 	initRespPkt, err := packet.Pack(packet.PKT_Init_Resp, 0, dataInitResp)
 	if err != nil {
@@ -76,7 +78,7 @@ func HandleInit(conn *net.TCPConn, pkt *packet.Pkt) *Client {
 	return &client
 }
 
-func SendOfflineMsg(client *Client) {
+func SendOfflineMsg(client *Client, appid string) {
 	// connect to Redis
 	redisConn, err := redis.Dial("tcp", ":6379")
 	if err != nil {
@@ -95,40 +97,38 @@ func SendOfflineMsg(client *Client) {
 	_, err = redis.Scan(reply, &current_time)
 
 	// get offline message for each App on this device
-	for _, appid := range client.AppIds {
-		key := "broadcast_msg:" + appid
-		reply, err = redis.Values(redisConn.Do("ZRANGE", key, 0, -1))
+	key := "broadcast_msg:" + appid
+	reply, err = redis.Values(redisConn.Do("ZRANGE", key, 0, -1))
+	if err != nil {
+		log.Printf("Error on ZRANGE: %s", err.Error())
+		goto Out
+	}
+	for len(reply) > 0 {
+		var msg_id int64
+		reply, err = redis.Scan(reply, &msg_id)
 		if err != nil {
-			log.Printf("Error on ZRANGE: %s", err.Error())
+			log.Printf("Error on Scan ZRANGE reply: %s", err.Error())
 			goto Out
 		}
-		var msg_id int64
-		for len(reply) > 0 {
-			reply, err = redis.Scan(reply, &msg_id)
-			if err != nil {
-				log.Printf("Error on Scan ZRANGE reply: %s", err.Error())
-				goto Out
-			}
-			log.Printf("offline msg_id: %d", msg_id)
-			key = "msg:" + strconv.FormatInt(msg_id, 10)
-			var reply_msg []interface{}
-			reply_msg, err = redis.Values(redisConn.Do("HMGET", key, "msg", "expire_time"))
-			if err != nil {
-				log.Printf("Error on HMGET: %s", err.Error())
-				goto Out
-			}
-			var msg string
-			var expire_time int64
-			_, err = redis.Scan(reply_msg, &msg, &expire_time)
-			if err != nil {
-				log.Printf("Error on Scan HMGET reply: %s", err.Error())
-				goto Out
-			}
-			log.Printf("expire_time: %d, msg: %s", expire_time, msg)
-			if expire_time > current_time {
-				// message hasn't expired, need to send it
-				client.SendMsg(msg, appid)
-			}
+		log.Printf("offline msg_id: %d", msg_id)
+		key = "msg:" + strconv.FormatInt(msg_id, 10)
+		var reply_msg []interface{}
+		reply_msg, err = redis.Values(redisConn.Do("HMGET", key, "msg", "expire_time"))
+		if err != nil {
+			log.Printf("Error on HMGET: %s", err.Error())
+			goto Out
+		}
+		var msg string
+		var expire_time int64
+		_, err = redis.Scan(reply_msg, &msg, &expire_time)
+		if err != nil {
+			log.Printf("Error on Scan HMGET reply: %s", err.Error())
+			goto Out
+		}
+		//log.Printf("expire_time: %d, msg: %s", expire_time, msg)
+		if expire_time > current_time {
+			// message hasn't expired, need to send it
+			client.SendMsg(msg, appid)
 		}
 	}
 
@@ -142,13 +142,16 @@ func HandleRegist(client *Client, pkt *packet.Pkt) {
 	if err != nil {
 		log.Printf("Failed to Unpack: %s", err.Error())
 	}
-	log.Printf("Device [%s] regist %s", client.Id, dataRegist.AppIds)
-	client.AppIds = append(client.AppIds, dataRegist.AppIds...)
-	SendOfflineMsg(client)
+	log.Printf("Device [%s] regist AppID: %s", client.Id, dataRegist.AppId)
+	client.AppIds = append(client.AppIds, dataRegist.AppId)
+	SendOfflineMsg(client, dataRegist.AppId)
 }
 
 func HandleHeartbeat(client *Client, pkt *packet.Pkt) {
+	log.Printf("Received Heartbeat")
+	client.LastHeartbeat = time.Now()
 }
 
 func HandleACK(client *Client, pkt *packet.Pkt) {
+	log.Printf("Received ACK")
 }

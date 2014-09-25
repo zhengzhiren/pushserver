@@ -11,23 +11,25 @@ type PktHandler func(conn *net.TCPConn, pkt *packet.Pkt)
 
 var PktHandlers = map[uint8]PktHandler{}
 
-// Received response for the init packet, send Regist packet
+// Received response for the init packet
 func HandleInit_Resp(conn *net.TCPConn, pkt *packet.Pkt) {
-	dataRegist := packet.PktDataRegist{
-		AppIds: AppIds,
+	// send Regist packet for each App
+	for _, appid := range AppIds {
+		dataRegist := packet.PktDataRegist{
+			AppId: appid,
+			AppKey: "temp_key",
+		}
+		pktRegist, err := packet.Pack(packet.PKT_Regist, 0, &dataRegist)
+		if err != nil {
+			log.Printf("Pack error: %s", err.Error())
+			return
+		}
+		OutPkt <- pktRegist
 	}
+}
 
-	pktRegist, err := packet.Pack(packet.PKT_Regist, 0, &dataRegist)
-	if err != nil {
-		log.Printf("Pack error: %s", err.Error())
-		return
-	}
-
-	b, err := pktRegist.Serialize()
-	if err != nil {
-		log.Printf("Serialize error: %s", err.Error())
-	}
-	conn.Write(b)
+// Received response for the regist packet
+func HandleRegist_Resp(conn *net.TCPConn, pkt *packet.Pkt) {
 }
 
 func HandlePush(conn *net.TCPConn, pkt *packet.Pkt) {
@@ -37,7 +39,12 @@ func HandlePush(conn *net.TCPConn, pkt *packet.Pkt) {
 		log.Printf("Error unpack push msg: %s", err.Error())
 	}
 	log.Printf("Received push message: Appid: %s, Msg: %s\n", dataMsg.AppId, dataMsg.Msg)
-}
 
-func HandleACK(conn *net.TCPConn, pkt *packet.Pkt) {
+	pktAck, err := packet.Pack(packet.PKT_ACK, 0, nil)
+	if err != nil {
+		log.Printf("Pack error: %s", err.Error())
+		return
+	}
+
+	OutPkt <- pktAck
 }

@@ -8,13 +8,15 @@ import (
 
 // packet type
 const (
-	PKT_Init        = iota
-	PKT_Init_Resp   = iota
-	PKT_Regist      = iota
-	PKT_Regist_Resp = iota
-	PKT_ACK         = iota
-	PKT_Heartbeat   = iota
-	PKT_Push        = iota
+	PKT_Heartbeat     = iota
+	PKT_Init          = iota
+	PKT_Init_Resp     = iota
+	PKT_Regist        = iota
+	PKT_Regist_Resp   = iota
+	PKT_Unregist      = iota
+	PKT_Unregist_Resp = iota
+	PKT_Push          = iota
+	PKT_ACK           = iota
 )
 
 const PKT_HEADER_SIZE = 10
@@ -53,16 +55,22 @@ func (this *PktHeader) Deserialize(b []byte) error {
 }
 
 func Pack(pktType uint8, pktId uint32, data interface{}) (*Pkt, error) {
-	buf, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-
 	pkt := new(Pkt)
 	pkt.Header.Type = pktType
 	pkt.Header.Id = pktId
-	pkt.Header.Len = uint32(len(buf))
-	pkt.Data = buf
+
+	if data != nil {
+		buf, err := json.Marshal(data)
+		if err != nil {
+			return nil, err
+		}
+		pkt.Header.Len = uint32(len(buf))
+		pkt.Data = buf
+	} else {
+		pkt.Header.Len = 0
+		pkt.Data = nil
+	}
+
 	return pkt, nil
 }
 
@@ -75,14 +83,35 @@ func Unpack(pkt *Pkt, data interface{}) error {
 }
 
 type PktDataInit struct {
-	DevId string
+	DevId string `json:"device_id"`
 }
 
 type PktDataInitResp struct {
+	Result bool   `json:"result"`
 }
 
 type PktDataRegist struct {
-	AppIds []string
+	AppId  string `json:"app_id"`
+	AppKey string `json:"app_key"`
+	RegId  string `json:"reg_id"`
+}
+
+type PktDataRegResp struct {
+	AppId  string `json:"app_id"`
+	RegId  string `json:"reg_id"`
+	Result bool   `json:"result"`
+}
+
+type PktDataUnregist struct {
+	AppId  string `json:"app_id"`
+	AppKey string `json:"app_key"`
+	RegId  string `json:"reg_id"`
+}
+
+type PktDataUnregResp struct {
+	AppId  string `json:"app_id"`
+	RegId  string `json:"reg_id"`
+	Result bool   `json:"result"`
 }
 
 type PktDataMessage struct {
