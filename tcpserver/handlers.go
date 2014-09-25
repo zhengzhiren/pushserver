@@ -55,10 +55,10 @@ func HandleInit(conn *net.TCPConn, pkt *packet.Pkt) *Client {
 
 	// send Response for the Init packet
 	dataInitResp := packet.PktDataInitResp{
-		Result: true,
+		Result: 0,
 	}
 
-	initRespPkt, err := packet.Pack(packet.PKT_Init_Resp, 0, dataInitResp)
+	initRespPkt, err := packet.Pack(packet.PKT_Init_Resp, 0, &dataInitResp)
 	if err != nil {
 		log.Printf("Pack error: %s", err.Error())
 		return nil
@@ -143,6 +143,25 @@ func HandleRegist(client *Client, pkt *packet.Pkt) {
 		log.Printf("Failed to Unpack: %s", err.Error())
 	}
 	log.Printf("Device [%s] regist AppID: %s", client.Id, dataRegist.AppId)
+
+	dataRegResp := packet.PktDataRegResp{
+		AppId: dataRegist.AppId,
+		RegId: dataRegist.AppId + "_XXX",
+		Result:0,
+	}
+	pktRegResp, err := packet.Pack(packet.PKT_Regist_Resp, 0, &dataRegResp)
+	if err != nil {
+		log.Printf("Pack error: %s", err.Error())
+		return
+	}
+
+	b, err := pktRegResp.Serialize()
+	if err != nil {
+		log.Printf("Serialize error: %s", err.Error())
+		return
+	}
+	client.Conn.Write(b)
+
 	client.AppIds = append(client.AppIds, dataRegist.AppId)
 	SendOfflineMsg(client, dataRegist.AppId)
 }

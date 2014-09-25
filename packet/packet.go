@@ -8,15 +8,15 @@ import (
 
 // packet type
 const (
-	PKT_Heartbeat     = iota
-	PKT_Init          = iota
-	PKT_Init_Resp     = iota
-	PKT_Regist        = iota
-	PKT_Regist_Resp   = iota
-	PKT_Unregist      = iota
-	PKT_Unregist_Resp = iota
-	PKT_Push          = iota
-	PKT_ACK           = iota
+	PKT_Heartbeat     = 0
+	PKT_Init          = 1
+	PKT_Init_Resp     = 2
+	PKT_Regist        = 3
+	PKT_Regist_Resp   = 4
+	PKT_Unregist      = 5
+	PKT_Unregist_Resp = 6
+	PKT_Push          = 10
+	PKT_ACK           = 11
 )
 
 const PKT_HEADER_SIZE = 10
@@ -87,7 +87,7 @@ type PktDataInit struct {
 }
 
 type PktDataInitResp struct {
-	Result bool   `json:"result"`
+	Result int `json:"result"`
 }
 
 type PktDataRegist struct {
@@ -99,7 +99,7 @@ type PktDataRegist struct {
 type PktDataRegResp struct {
 	AppId  string `json:"app_id"`
 	RegId  string `json:"reg_id"`
-	Result bool   `json:"result"`
+	Result int    `json:"result"`
 }
 
 type PktDataUnregist struct {
@@ -111,10 +111,18 @@ type PktDataUnregist struct {
 type PktDataUnregResp struct {
 	AppId  string `json:"app_id"`
 	RegId  string `json:"reg_id"`
-	Result bool   `json:"result"`
+	Result int    `json:"result"`
 }
 
 type PktDataMessage struct {
-	Msg   string
-	AppId string
+	MsgId   int64 `json:"msg_id"`
+	AppId   string `json:"app_id"`
+	MsgType int    `json:"msg_type"`
+	Msg     string `json:"payload"`
+}
+
+type PktDataACK struct {
+	MsgId int64 `json:"msg_id"`
+	AppId string `json:"app_id"`
+	RegId string `json:"reg_id"`
 }
