@@ -166,6 +166,18 @@ func HandleRegist(client *Client, pkt *packet.Pkt) {
 	SendOfflineMsg(client, dataRegist.AppId)
 }
 
+func HandleUnregist(client *Client, pkt *packet.Pkt) {
+	dataUnreg := packet.PktDataUnregist{}
+	err := packet.Unpack(pkt, &dataUnreg)
+	if err != nil {
+		log.Printf("Unpack error: %s", err.Error())
+		return
+	}
+
+	log.Printf("Received Unregist. AppId: %s, AppKey: %s, RegId: %s",
+	dataUnreg.AppId, dataUnreg.AppKey, dataUnreg.RegId)
+}
+
 func HandleHeartbeat(client *Client, pkt *packet.Pkt) {
 	log.Printf("Received Heartbeat")
 	client.LastHeartbeat = time.Now()

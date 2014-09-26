@@ -254,7 +254,7 @@ func LoadRegIds() {
 		return
 	}
 	buf := make([]byte, 1024)
-	_, err = file.Read(buf)
+	n, err := file.Read(buf)
 	if err != nil {
 		log.Printf("Read file error: %s", err.Error())
 		file.Close()
@@ -264,7 +264,7 @@ func LoadRegIds() {
 	log.Printf("%s", buf)
 
 	regIds := map[string]string {}
-	err = json.Unmarshal(buf, regIds)
+	err = json.Unmarshal(buf[:n], &regIds)
 	if err != nil {
 		log.Printf("Unarshal error: %s", err.Error())
 		file.Close()

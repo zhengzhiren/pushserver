@@ -23,6 +23,7 @@ func Create() *TcpServer {
 		pktHandlers: map[uint8]PktHandler{},
 	}
 	server.pktHandlers[packet.PKT_Regist] = HandleRegist
+	server.pktHandlers[packet.PKT_Unregist] = HandleUnregist
 	server.pktHandlers[packet.PKT_Heartbeat] = HandleHeartbeat
 	server.pktHandlers[packet.PKT_ACK] = HandleACK
 	return server
