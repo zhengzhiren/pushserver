@@ -1,4 +1,4 @@
-package main
+package agent
 
 import (
 	"log"
@@ -9,24 +9,23 @@ import (
 
 type PktHandler func(conn *net.TCPConn, pkt *packet.Pkt)
 
-var PktHandlers = map[uint8]PktHandler{}
 
 // Received response for the init packet
 func HandleInit_Resp(conn *net.TCPConn, pkt *packet.Pkt) {
 	// send Regist packet for each App
-	for appid, _ := range RegIds {
-		dataRegist := packet.PktDataRegist{
-			AppId:  appid,
-			RegId: RegIds[appid],
-			AppKey: "temp_key",
-		}
-		pktRegist, err := packet.Pack(packet.PKT_Regist, 0, &dataRegist)
-		if err != nil {
-			log.Printf("Pack error: %s", err.Error())
-			return
-		}
-		OutPkt <- pktRegist
-	}
+//	for appid, _ := range RegIds {
+//		dataRegist := packet.PktDataRegist{
+//			AppId:  appid,
+//			RegId: RegIds[appid],
+//			AppKey: "temp_key",
+//		}
+//		pktRegist, err := packet.Pack(packet.PKT_Regist, 0, &dataRegist)
+//		if err != nil {
+//			log.Printf("Pack error: %s", err.Error())
+//			return
+//		}
+//		OutPkt <- pktRegist
+//	}
 }
 
 // Received response for the regist packet
