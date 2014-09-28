@@ -1,9 +1,9 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
-	"flag"
 	"os/signal"
 	"syscall"
 
@@ -12,14 +12,16 @@ import (
 
 func main() {
 	var port int
+	var httpPort int
 	flag.IntVar(&port, "p", 9233, "Port for Push server")
+	flag.IntVar(&httpPort, "P", 9234, "Port for http server")
 	flag.Parse()
 
 	tcpServer := tcpserver.Create(port)
 	go tcpServer.Start()
 
 	// HTTP server
-	go StartHttp()
+	go StartHttp(httpPort)
 
 	ch := make(chan os.Signal)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL)

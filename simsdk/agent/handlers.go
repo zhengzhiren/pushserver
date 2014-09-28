@@ -8,7 +8,6 @@ import (
 
 type PktHandler func(agent *Agent, pkt *packet.Pkt)
 
-
 // Received response for the init packet
 func HandleInit_Resp(agent *Agent, pkt *packet.Pkt) {
 }
@@ -50,4 +49,8 @@ func HandlePush(agent *Agent, pkt *packet.Pkt) {
 	}
 
 	agent.SendPkt(pktAck)
+
+	if agent.OnReceiveMsg != nil {
+		agent.OnReceiveMsg(dataMsg.AppId, dataMsg.MsgId, dataMsg.MsgType, dataMsg.Msg)
+	}
 }

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"flag"
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/zhengzhiren/pushserver/simapp/receiverrpc"
 	"github.com/zhengzhiren/pushserver/simsdk/agent"
 	"github.com/zhengzhiren/pushserver/simsdk/sdkrpc"
 )
@@ -18,7 +19,8 @@ import (
 var (
 	RegIds   = make(map[string]string)
 	DeviceId = ""
-	RpcPort int
+	RpcPort  int
+	sdk      *sdkrpc.SDK
 )
 
 func main() {
@@ -47,20 +49,21 @@ func main() {
 		return
 	}
 	agent := agent.NewAgent(DeviceId, raddr)
+	agent.OnReceiveMsg = OnReceiveMsg
 	go agent.Run()
 
 	//go RunRPC(RpcPort)
 	RunRPC(RpcPort, agent)
 
-//	ch := make(chan os.Signal)
-//	signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL)
-//	s := <-ch
+	//	ch := make(chan os.Signal)
+	//	signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL)
+	//	s := <-ch
 }
 
 func RunRPC(port int, agent *agent.Agent) {
 	log.Printf("Starting RPC server\n")
-	laddr := net.TCPAddr {
-		IP: net.ParseIP("0.0.0.0"),
+	laddr := net.TCPAddr{
+		IP:   net.ParseIP("0.0.0.0"),
 		Port: port,
 	}
 	ln, err := net.ListenTCP("tcp", &laddr)
@@ -69,10 +72,11 @@ func RunRPC(port int, agent *agent.Agent) {
 		return
 	}
 
-	sdk := sdkrpc.SDK {
-		Agent: agent,
+	sdk = &sdkrpc.SDK{
+		Agent:     agent,
+		Receivers: make(map[string]*rpc.Client),
 	}
-	rpc.Register(&sdk)
+	rpc.Register(sdk)
 	log.Printf("RPC server is listening on %s\n", laddr.String())
 
 	defer func() {
@@ -93,5 +97,19 @@ func RunRPC(port int, agent *agent.Agent) {
 			continue
 		}
 		go rpc.ServeConn(conn)
+	}
+}
+
+func OnReceiveMsg(appId string, msgId int64, msgType int, msg string) {
+	client := sdk.Receivers[appId]
+	arg := receiverrpc.ArgOnReceiveMsg{
+		MsgId:   msgId,
+		MsgType: msgType,
+		Msg:     msg,
+	}
+	reply := receiverrpc.ReplyOnReceiveMsg{}
+	err := client.Call("Receiver.OnReceiveMsg", arg, &reply)
+	if err != nil {
+		log.Println(err)
 	}
 }

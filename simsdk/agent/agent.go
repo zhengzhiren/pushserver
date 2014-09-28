@@ -1,29 +1,32 @@
 package agent
 
 import (
-	"net"
-	"log"
-	"time"
 	"io"
+	"log"
+	"net"
+	"time"
 
 	"github.com/zhengzhiren/pushserver/packet"
 )
 
 const CHAN_LEN = 10
 
+type OnReceiveMsg func(appId string, msgId int64, msgType int, msg string)
+
 type Agent struct {
-	deviceId string
-	serverAddr *net.TCPAddr	// Push server address
-	pktHandlers map[uint8]PktHandler
-	outPkt   chan *packet.Pkt
+	deviceId     string
+	serverAddr   *net.TCPAddr // Push server address
+	pktHandlers  map[uint8]PktHandler
+	outPkt       chan *packet.Pkt
+	OnReceiveMsg OnReceiveMsg
 }
 
-func NewAgent(devId string, serverAddr *net.TCPAddr) (*Agent) {
-	agent := Agent {
-		deviceId: devId,
-		serverAddr: serverAddr,
+func NewAgent(devId string, serverAddr *net.TCPAddr) *Agent {
+	agent := Agent{
+		deviceId:    devId,
+		serverAddr:  serverAddr,
 		pktHandlers: map[uint8]PktHandler{},
-		outPkt   : make(chan *packet.Pkt, CHAN_LEN),
+		outPkt:      make(chan *packet.Pkt, CHAN_LEN),
 	}
 	agent.pktHandlers[packet.PKT_Init_Resp] = HandleInit_Resp
 	agent.pktHandlers[packet.PKT_Regist_Resp] = HandleRegist_Resp
@@ -64,8 +67,8 @@ func (this *Agent) Run() {
 		heartbeat, _ := hbPkt.Serialize()
 		for {
 			select {
-				//case <- done:
-				//	break
+			//case <- done:
+			//	break
 			case pkt := <-this.outPkt:
 				b, err := pkt.Serialize()
 				if err != nil {
@@ -155,7 +158,7 @@ func (this *Agent) handlePacket(pkt *packet.Pkt) {
 func (this *Agent) Regist(appid string, appkey string, regid string) {
 	dataRegist := packet.PktDataRegist{
 		AppId:  appid,
-		RegId: regid,
+		RegId:  regid,
 		AppKey: appkey,
 	}
 	pktRegist, err := packet.Pack(packet.PKT_Regist, 0, &dataRegist)

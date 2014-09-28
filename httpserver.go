@@ -11,8 +11,8 @@ import (
 	"github.com/zhengzhiren/pushserver/tcpserver"
 )
 
-func StartHttp() {
-	addr := "localhost:8080"
+func StartHttp(port int) {
+	addr := "localhost:" + strconv.Itoa(port)
 	log.Printf("Starting HTTP server on %s\n", addr)
 	http.HandleFunc("/", rootHandler)
 	err := http.ListenAndServe(addr, nil)
