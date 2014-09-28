@@ -30,7 +30,7 @@ func HandleInit(conn *net.TCPConn, pkt *packet.Pkt) *Client {
 		LastHeartbeat: time.Now(),
 	}
 
-	log.Printf("New Device is online, Id: %s, AppIds: %s", client.Id, client.AppIds)
+	log.Printf("New Device is online, Id: %s", client.Id)
 
 	go func() {
 		for {

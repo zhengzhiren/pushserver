@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"flag"
 	"os/signal"
 	"syscall"
 
@@ -10,7 +11,11 @@ import (
 )
 
 func main() {
-	tcpServer := tcpserver.Create()
+	var port int
+	flag.IntVar(&port, "p", 9233, "Port for Push server")
+	flag.Parse()
+
+	tcpServer := tcpserver.Create(port)
 	go tcpServer.Start()
 
 	// HTTP server

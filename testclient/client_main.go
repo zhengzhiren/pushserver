@@ -73,7 +73,11 @@ func main() {
 	}
 
 	agent := agent.NewAgent(DeviceId, raddr)
-	agent.Run()
+	go agent.Run()
+
+	for appid, _ := range RegIds {
+		agent.Regist(appid, appid+"key", RegIds[appid])
+	}
 
 	ch := make(chan os.Signal)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL)

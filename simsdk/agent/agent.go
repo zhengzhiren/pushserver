@@ -22,6 +22,7 @@ func NewAgent(devId string, serverAddr *net.TCPAddr) (*Agent) {
 	agent := Agent {
 		deviceId: devId,
 		serverAddr: serverAddr,
+		pktHandlers: map[uint8]PktHandler{},
 		outPkt   : make(chan *packet.Pkt, CHAN_LEN),
 	}
 	agent.pktHandlers[packet.PKT_Init_Resp] = HandleInit_Resp
@@ -63,8 +64,8 @@ func (this *Agent) Run() {
 		heartbeat, _ := hbPkt.Serialize()
 		for {
 			select {
-			//case <- done:
-			//	break
+				//case <- done:
+				//	break
 			case pkt := <-this.outPkt:
 				b, err := pkt.Serialize()
 				if err != nil {
@@ -78,75 +79,91 @@ func (this *Agent) Run() {
 		}
 	}()
 
-	go func() {
-		var bufHeader = make([]byte, packet.PKT_HEADER_SIZE)
-		for {
-			//// check if we are exiting
-			//select {
-			//case <-this.exitChan:
-			//	log.Printf("Closing connection from %s.\n", conn.RemoteAddr().String())
-			//	return
-			//default:
-			//	// continue read
-			//}
+	var bufHeader = make([]byte, packet.PKT_HEADER_SIZE)
+	for {
+		//// check if we are exiting
+		//select {
+		//case <-this.exitChan:
+		//	log.Printf("Closing connection from %s.\n", conn.RemoteAddr().String())
+		//	return
+		//default:
+		//	// continue read
+		//}
 
-			const readTimeout = 100 * time.Millisecond
-			conn.SetReadDeadline(time.Now().Add(readTimeout))
+		const readTimeout = 100 * time.Millisecond
+		conn.SetReadDeadline(time.Now().Add(readTimeout))
 
-			// read the packet header
-			nbytes, err := io.ReadFull(conn, bufHeader)
+		// read the packet header
+		nbytes, err := io.ReadFull(conn, bufHeader)
+		if err != nil {
+			if err == io.EOF {
+				log.Printf("read EOF, closing connection")
+				return
+			} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				// just read timeout, not an error
+				continue
+			}
+			log.Printf("read error: %s\n", err.Error())
+			return
+		}
+		log.Printf("%d bytes packet header read\n", nbytes)
+
+		var pkt = packet.Pkt{
+			Data: nil,
+		}
+		pkt.Header.Deserialize(bufHeader)
+
+		// read the packet data
+		if pkt.Header.Len > 0 {
+			log.Printf("expecting data size: %d\n", pkt.Header.Len)
+			var bufData = make([]byte, pkt.Header.Len)
+			nbytes, err := io.ReadFull(conn, bufData)
 			if err != nil {
 				if err == io.EOF {
 					log.Printf("read EOF, closing connection")
 					return
 				} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-					// just read timeout, not an error
-					continue
-				}
-				log.Printf("read error: %s\n", err.Error())
-				continue
-			}
-			log.Printf("%d bytes packet header read\n", nbytes)
-
-			var pkt = packet.Pkt{
-				Data: nil,
-			}
-			pkt.Header.Deserialize(bufHeader)
-
-			// read the packet data
-			if pkt.Header.Len > 0 {
-				log.Printf("expecting data size: %d\n", pkt.Header.Len)
-				var bufData = make([]byte, pkt.Header.Len)
-				nbytes, err := io.ReadFull(conn, bufData)
-				if err != nil {
-					if err == io.EOF {
-						log.Printf("read EOF, closing connection")
-						return
-					} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-						// read timeout
-						//TODO
-						log.Printf("read error: %s\n", err.Error())
-						continue
-					}
+					// read timeout
+					//TODO
 					log.Printf("read error: %s\n", err.Error())
 					continue
 				}
-				log.Printf("%d bytes packet data read: %s\n", nbytes, bufData)
-				pkt.Data = bufData
+				log.Printf("read error: %s\n", err.Error())
+				return
 			}
-
-			this.handlePacket(conn, &pkt)
+			log.Printf("%d bytes packet data read: %s\n", nbytes, bufData)
+			pkt.Data = bufData
 		}
-	}()
+
+		this.handlePacket(&pkt)
+	}
 }
 
-func (this *Agent) handlePacket(conn *net.TCPConn, pkt *packet.Pkt) {
+func (this *Agent) SendPkt(pkt *packet.Pkt) {
+	this.outPkt <- pkt
+}
+
+func (this *Agent) handlePacket(pkt *packet.Pkt) {
 	handler, ok := this.pktHandlers[pkt.Header.Type]
 	if ok {
-		handler(conn, pkt)
+		handler(this, pkt)
 	} else {
 		log.Printf("Unknown packet type: %d", pkt.Header.Type)
 	}
+}
+
+func (this *Agent) Regist(appid string, appkey string, regid string) {
+	dataRegist := packet.PktDataRegist{
+		AppId:  appid,
+		RegId: regid,
+		AppKey: appkey,
+	}
+	pktRegist, err := packet.Pack(packet.PKT_Regist, 0, &dataRegist)
+	if err != nil {
+		log.Printf("Pack error: %s", err.Error())
+		return
+	}
+	this.SendPkt(pktRegist)
 }
 
 func (this *Agent) Unregist(appid string, appkey string, regid string) {
@@ -160,5 +177,5 @@ func (this *Agent) Unregist(appid string, appkey string, regid string) {
 		log.Printf("Pack error: %s", err.Error())
 		return
 	}
-	this.outPkt <- pktUnregist
+	this.SendPkt(pktUnregist)
 }

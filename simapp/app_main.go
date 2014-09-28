@@ -25,12 +25,13 @@ func main() {
 	flag.IntVar(&rpcPort, "p", 9988, "Dest port for RPC")
 	flag.Parse()
 
-	if flag.NArg() != 1 {
-		fmt.Printf("missing AppId\n")
+	if flag.NArg() != 2 {
+		fmt.Printf("need AppId and AppKey\n")
 		return
 	}
 
 	appId := flag.Args()[0]
+	appKey := flag.Args()[1]
 
 	raddr := net.TCPAddr {
 		IP: net.ParseIP(ip),
@@ -55,6 +56,7 @@ func main() {
 	// call regist
 	args := sdkrpc.ArgRegist{
 		AppId: appId,
+		AppKey: appKey,
 	}
 	reply := sdkrpc.ReplyRegist{
 	}
@@ -69,5 +71,5 @@ func main() {
 
 	s := <-ch
 	log.Println("Received signal:", s)
-	//Unregist(appId)
+	//err = rpcClient.Call("SDK.Unregist", args, &reply)
 }

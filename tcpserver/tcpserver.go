@@ -14,13 +14,15 @@ type TcpServer struct {
 	exitChan    chan bool
 	waitGroup   *sync.WaitGroup
 	pktHandlers map[uint8]PktHandler
+	port int
 }
 
-func Create() *TcpServer {
+func Create(port int) *TcpServer {
 	server := &TcpServer{
 		exitChan:    make(chan bool),
 		waitGroup:   &sync.WaitGroup{},
 		pktHandlers: map[uint8]PktHandler{},
+		port: port,
 	}
 	server.pktHandlers[packet.PKT_Regist] = HandleRegist
 	server.pktHandlers[packet.PKT_Unregist] = HandleUnregist
@@ -31,8 +33,11 @@ func Create() *TcpServer {
 
 func (this *TcpServer) Start() {
 	log.Printf("Starting TcpServer\n")
-	laddr, _ := net.ResolveTCPAddr("tcp", "0.0.0.0:9999")
-	ln, err := net.ListenTCP("tcp", laddr)
+	laddr := net.TCPAddr {
+		IP: net.ParseIP("0.0.0.0"),
+		Port: this.port,
+	}
+	ln, err := net.ListenTCP("tcp", &laddr)
 	if err != nil {
 		log.Printf("Failed to start TcpServer: %s", err.Error())
 		return
