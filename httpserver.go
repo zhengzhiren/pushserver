@@ -121,9 +121,9 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	// send the message to online devices
 	sendCount := 0
 	tcpserver.ClientMapLock.RLock()
-	fmt.Fprintf(w, "\nClients online: %d\n", len(tcpserver.ClientMap))
+	fmt.Fprintf(w, "\nOnline devices: %d\n", len(tcpserver.ClientMap))
 	for _, client := range tcpserver.ClientMap {
-		fmt.Fprintf(w, "Client Id: %s\n", client.Id)
+		fmt.Fprintf(w, "Device Id: %s\n", client.Id)
 		if deviceid == "" || deviceid == client.Id {
 			for _, v := range client.AppIds {
 				if appid == v {

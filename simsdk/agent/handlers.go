@@ -39,7 +39,7 @@ func HandlePush(agent *Agent, pkt *packet.Pkt) {
 	dataAck := packet.PktDataACK{
 		MsgId: dataMsg.MsgId,
 		AppId: dataMsg.AppId,
-		//RegId: RegIds[dataMsg.AppId],
+		RegId: agent.RegIds[dataMsg.AppId],
 	}
 
 	pktAck, err := packet.Pack(packet.PKT_ACK, 0, dataAck)
