@@ -83,7 +83,8 @@ func Unpack(pkt *Pkt, data interface{}) error {
 }
 
 type PktDataInit struct {
-	DevId string `json:"device_id"`
+	DevId string          `json:"devid"`
+	Apps  []PktDataRegist `json:"apps"`
 }
 
 type PktDataInitResp struct {
@@ -91,38 +92,38 @@ type PktDataInitResp struct {
 }
 
 type PktDataRegist struct {
-	AppId  string `json:"app_id"`
-	AppKey string `json:"app_key"`
-	RegId  string `json:"reg_id"`
+	AppId  string `json:"appid"`
+	AppKey string `json:"appkey"`
+	RegId  string `json:"regid"`
 }
 
 type PktDataRegResp struct {
-	AppId  string `json:"app_id"`
-	RegId  string `json:"reg_id"`
+	AppId  string `json:"appid"`
+	RegId  string `json:"regid"`
 	Result int    `json:"result"`
 }
 
 type PktDataUnregist struct {
-	AppId  string `json:"app_id"`
-	AppKey string `json:"app_key"`
-	RegId  string `json:"reg_id"`
+	AppId  string `json:"appid"`
+	AppKey string `json:"appkey"`
+	RegId  string `json:"regid"`
 }
 
 type PktDataUnregResp struct {
-	AppId  string `json:"app_id"`
-	RegId  string `json:"reg_id"`
+	AppId  string `json:"appid"`
+	RegId  string `json:"regid"`
 	Result int    `json:"result"`
 }
 
 type PktDataMessage struct {
-	MsgId   int64 `json:"msg_id"`
-	AppId   string `json:"app_id"`
-	MsgType int    `json:"msg_type"`
-	Msg     string `json:"payload"`
+	MsgId   int64  `json:"msgid"`
+	AppId   string `json:"appid"`
+	MsgType int    `json:"type"`
+	Msg     string `json:"content"`
 }
 
 type PktDataACK struct {
-	MsgId int64 `json:"msg_id"`
-	AppId string `json:"app_id"`
-	RegId string `json:"reg_id"`
+	MsgId int64  `json:"msgid"`
+	AppId string `json:"appid"`
+	RegId string `json:"regid"`
 }

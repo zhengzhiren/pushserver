@@ -17,21 +17,26 @@ import (
 )
 
 var (
-	RegIds   = make(map[string]string)
 	DeviceId = ""
 	RpcPort  int
 	sdk      *sdkrpc.SDK
 )
 
+func usage() {
+	fmt.Printf("Usage:\n")
+	fmt.Printf("simsdk <-i device_id> [-p rpc_port] <ip:port>\n")
+}
+
 func main() {
 	log.SetPrefix(os.Args[0])
 
-	flag.StringVar(&DeviceId, "i", "", "Device Id")
-	flag.IntVar(&RpcPort, "p", 9988, "Port for RPC")
+	flag.StringVar(&DeviceId, "i", "", "Device Id of this simsdk")
+	flag.IntVar(&RpcPort, "p", 9988, "RPC listen port for App")
 	flag.Parse()
 
 	if flag.NArg() != 1 {
 		fmt.Printf("missing ip:port\n")
+		usage()
 		return
 	}
 

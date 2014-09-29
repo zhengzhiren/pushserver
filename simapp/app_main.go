@@ -15,6 +15,11 @@ import (
 	"github.com/zhengzhiren/pushserver/simsdk/sdkrpc"
 )
 
+func usage() {
+	fmt.Printf("Usage:\n")
+	fmt.Printf("simapp [-d sdk_ip] [-p sdk_rpc_port] [-r receive_port] <app_id> <app_key>\n")
+}
+
 func main() {
 	log.SetPrefix(os.Args[0])
 
@@ -24,13 +29,14 @@ func main() {
 		receiverPort int
 	)
 
-	flag.StringVar(&ip, "d", "127.0.0.1", "Dest IP")
-	flag.IntVar(&rpcPort, "p", 9988, "Dest port for RPC")
+	flag.StringVar(&ip, "d", "127.0.0.1", "SDK IP")
+	flag.IntVar(&rpcPort, "p", 9988, "Dest SDK port for RPC")
 	flag.IntVar(&receiverPort, "r", 9888, "Receiver port")
 	flag.Parse()
 
 	if flag.NArg() != 2 {
 		fmt.Printf("need AppId and AppKey\n")
+		usage()
 		return
 	}
 

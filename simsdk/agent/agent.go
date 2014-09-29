@@ -1,9 +1,11 @@
 package agent
 
 import (
+	"encoding/json"
 	"io"
 	"log"
 	"net"
+	"os"
 	"time"
 
 	"github.com/zhengzhiren/pushserver/packet"
@@ -19,6 +21,7 @@ type Agent struct {
 	pktHandlers  map[uint8]PktHandler
 	outPkt       chan *packet.Pkt
 	OnReceiveMsg OnReceiveMsg
+	RegIds       map[string]string
 }
 
 func NewAgent(devId string, serverAddr *net.TCPAddr) *Agent {
@@ -27,6 +30,7 @@ func NewAgent(devId string, serverAddr *net.TCPAddr) *Agent {
 		serverAddr:  serverAddr,
 		pktHandlers: map[uint8]PktHandler{},
 		outPkt:      make(chan *packet.Pkt, CHAN_LEN),
+		RegIds:      make(map[string]string),
 	}
 	agent.pktHandlers[packet.PKT_Init_Resp] = HandleInit_Resp
 	agent.pktHandlers[packet.PKT_Regist_Resp] = HandleRegist_Resp
@@ -35,6 +39,8 @@ func NewAgent(devId string, serverAddr *net.TCPAddr) *Agent {
 }
 
 func (this *Agent) Run() {
+	this.LoadRegIds()
+
 	conn, err := net.DialTCP("tcp", nil, this.serverAddr)
 	if err != nil {
 		log.Printf("Dial error: %s", err.Error())
@@ -181,4 +187,46 @@ func (this *Agent) Unregist(appid string, appkey string, regid string) {
 		return
 	}
 	this.SendPkt(pktUnregist)
+}
+
+func (this *Agent) SaveRegIds() {
+	file, err := os.OpenFile("RegIds."+this.deviceId, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		log.Printf("OpenFile error: %s", err.Error())
+		return
+	}
+	b, err := json.Marshal(this.RegIds)
+	if err != nil {
+		log.Printf("Marshal error: %s", err.Error())
+		file.Close()
+		return
+	}
+	file.Write(b)
+	file.Close()
+}
+
+func (this *Agent) LoadRegIds() {
+	file, err := os.Open("RegIds." + this.deviceId)
+	if err != nil {
+		log.Printf("Open error: %s", err.Error())
+		return
+	}
+	buf := make([]byte, 1024)
+	n, err := file.Read(buf)
+	if err != nil {
+		log.Printf("Read file error: %s", err.Error())
+		file.Close()
+		return
+	}
+
+	log.Printf("%s", buf)
+
+	err = json.Unmarshal(buf[:n], &this.RegIds)
+	if err != nil {
+		log.Printf("Unarshal error: %s", err.Error())
+		file.Close()
+		return
+	}
+
+	log.Printf("RegIds: %s", this.RegIds)
 }

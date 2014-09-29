@@ -23,8 +23,8 @@ func HandleRegist_Resp(agent *Agent, pkt *packet.Pkt) {
 	}
 
 	log.Printf("AppId: [%s] RegId: [%s]", dataRegResp.AppId, dataRegResp.RegId)
-	//RegIds[dataRegResp.AppId] = dataRegResp.RegId
-	//SaveRegIds()
+	agent.RegIds[dataRegResp.AppId] = dataRegResp.RegId
+	agent.SaveRegIds()
 }
 
 func HandlePush(agent *Agent, pkt *packet.Pkt) {

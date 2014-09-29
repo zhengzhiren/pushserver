@@ -25,7 +25,11 @@ type ReplyRegist struct {
 
 func (this *SDK) Regist(arg ArgRegist, reply *ReplyRegist) error {
 	log.Printf("RPC: Regist")
-	this.Agent.Regist(arg.AppId, arg.AppKey, arg.RegId)
+	regId := arg.RegId
+	if regId == "" {
+		regId = this.Agent.RegIds[arg.AppId]
+	}
+	this.Agent.Regist(arg.AppId, arg.AppKey, regId)
 
 	conn, err := net.DialTCP("tcp", nil, &arg.ReceiverAddr)
 	if err != nil {
