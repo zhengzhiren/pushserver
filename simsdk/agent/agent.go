@@ -3,25 +3,29 @@ package agent
 import (
 	"encoding/json"
 	"io"
-	"log"
+	//"log"
 	"net"
 	"os"
 	"time"
+
+	log "github.com/cihub/seelog"
 
 	"github.com/zhengzhiren/pushserver/packet"
 )
 
 const CHAN_LEN = 10
 
+type OnRegResponse func(appId string, regId string, result int)
 type OnReceiveMsg func(appId string, msgId int64, msgType int, msg string)
 
 type Agent struct {
-	deviceId     string
-	serverAddr   *net.TCPAddr // Push server address
-	pktHandlers  map[uint8]PktHandler
-	outPkt       chan *packet.Pkt
-	OnReceiveMsg OnReceiveMsg
-	RegIds       map[string]string
+	deviceId      string
+	serverAddr    *net.TCPAddr // Push server address
+	pktHandlers   map[uint8]PktHandler
+	outPkt        chan *packet.Pkt
+	OnRegResponse OnRegResponse
+	OnReceiveMsg  OnReceiveMsg
+	RegIds        map[string]string
 }
 
 func NewAgent(devId string, serverAddr *net.TCPAddr) *Agent {
@@ -34,6 +38,7 @@ func NewAgent(devId string, serverAddr *net.TCPAddr) *Agent {
 	}
 	agent.pktHandlers[packet.PKT_Init_Resp] = HandleInit_Resp
 	agent.pktHandlers[packet.PKT_Regist_Resp] = HandleRegist_Resp
+	agent.pktHandlers[packet.PKT_Unregist_Resp] = HandleUnregist_Resp
 	agent.pktHandlers[packet.PKT_Push] = HandlePush
 	return &agent
 }
@@ -43,7 +48,7 @@ func (this *Agent) Run() {
 
 	conn, err := net.DialTCP("tcp", nil, this.serverAddr)
 	if err != nil {
-		log.Printf("Dial error: %s", err.Error())
+		log.Error("Dial error: %s", err.Error())
 		return
 	}
 	defer func() {
@@ -56,15 +61,15 @@ func (this *Agent) Run() {
 
 	initPkt, err := packet.Pack(packet.PKT_Init, 0, dataInit)
 	if err != nil {
-		log.Printf("Pack error: %s", err.Error())
+		log.Error("Pack error: %s", err.Error())
 		return
 	}
 
 	b, err := initPkt.Serialize()
 	if err != nil {
-		log.Printf("Serialize error: %s", err.Error())
+		log.Error("Serialize error: %s", err.Error())
 	}
-	log.Printf(string(initPkt.Data))
+	log.Debug(string(initPkt.Data))
 	conn.Write(b)
 
 	go func() {
@@ -78,9 +83,9 @@ func (this *Agent) Run() {
 			case pkt := <-this.outPkt:
 				b, err := pkt.Serialize()
 				if err != nil {
-					log.Printf("Serialize error: %s", err.Error())
+					log.Errorf("Serialize error: %s", err.Error())
 				}
-				log.Printf("Write data: %s\n", b)
+				log.Debugf("Write data: %s\n", b)
 				conn.Write(b)
 			case <-timer.C:
 				conn.Write(heartbeat)
@@ -106,16 +111,16 @@ func (this *Agent) Run() {
 		nbytes, err := io.ReadFull(conn, bufHeader)
 		if err != nil {
 			if err == io.EOF {
-				log.Printf("read EOF, closing connection")
+				log.Warn("read EOF, closing connection")
 				return
 			} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				// just read timeout, not an error
 				continue
 			}
-			log.Printf("read error: %s\n", err.Error())
+			log.Errorf("read error: %s\n", err.Error())
 			return
 		}
-		log.Printf("%d bytes packet header read\n", nbytes)
+		log.Debugf("%d bytes packet header read\n", nbytes)
 
 		var pkt = packet.Pkt{
 			Data: nil,
@@ -124,23 +129,23 @@ func (this *Agent) Run() {
 
 		// read the packet data
 		if pkt.Header.Len > 0 {
-			log.Printf("expecting data size: %d\n", pkt.Header.Len)
+			log.Debugf("expecting data size: %d\n", pkt.Header.Len)
 			var bufData = make([]byte, pkt.Header.Len)
 			nbytes, err := io.ReadFull(conn, bufData)
 			if err != nil {
 				if err == io.EOF {
-					log.Printf("read EOF, closing connection")
+					log.Warn("read EOF, closing connection")
 					return
 				} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 					// read timeout
 					//TODO
-					log.Printf("read error: %s\n", err.Error())
+					log.Errorf("Timeout on receiving packet data. error: %s\n", err.Error())
 					continue
 				}
-				log.Printf("read error: %s\n", err.Error())
+				log.Errorf("Error on receiving packet data. error: %s\n", err.Error())
 				return
 			}
-			log.Printf("%d bytes packet data read: %s\n", nbytes, bufData)
+			log.Debugf("%d bytes packet data read: %s\n", nbytes, bufData)
 			pkt.Data = bufData
 		}
 
@@ -157,11 +162,12 @@ func (this *Agent) handlePacket(pkt *packet.Pkt) {
 	if ok {
 		handler(this, pkt)
 	} else {
-		log.Printf("Unknown packet type: %d", pkt.Header.Type)
+		log.Warnf("Unknown packet type: %d", pkt.Header.Type)
 	}
 }
 
 func (this *Agent) Regist(appid string, appkey string, regid string) {
+	log.Infof("Regist AppId: %s, AppKey: %s, RegId: %s", appid, appkey, regid)
 	dataRegist := packet.PktDataRegist{
 		AppId:  appid,
 		RegId:  regid,
@@ -169,13 +175,14 @@ func (this *Agent) Regist(appid string, appkey string, regid string) {
 	}
 	pktRegist, err := packet.Pack(packet.PKT_Regist, 0, &dataRegist)
 	if err != nil {
-		log.Printf("Pack error: %s", err.Error())
+		log.Errorf("Pack error: %s", err.Error())
 		return
 	}
 	this.SendPkt(pktRegist)
 }
 
 func (this *Agent) Unregist(appid string, appkey string, regid string) {
+	log.Infof("Unregist AppId: %s, AppKey: %s, RegId: %s", appid, appkey, regid)
 	dataUnregist := packet.PktDataUnregist{
 		AppId:  appid,
 		AppKey: appkey,
@@ -183,7 +190,7 @@ func (this *Agent) Unregist(appid string, appkey string, regid string) {
 	}
 	pktUnregist, err := packet.Pack(packet.PKT_Unregist, 0, dataUnregist)
 	if err != nil {
-		log.Printf("Pack error: %s", err.Error())
+		log.Errorf("Pack error: %s", err.Error())
 		return
 	}
 	this.SendPkt(pktUnregist)
@@ -192,12 +199,12 @@ func (this *Agent) Unregist(appid string, appkey string, regid string) {
 func (this *Agent) SaveRegIds() {
 	file, err := os.OpenFile("RegIds."+this.deviceId, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		log.Printf("OpenFile error: %s", err.Error())
+		log.Errorf("OpenFile error: %s", err.Error())
 		return
 	}
 	b, err := json.Marshal(this.RegIds)
 	if err != nil {
-		log.Printf("Marshal error: %s", err.Error())
+		log.Errorf("Marshal error: %s", err.Error())
 		file.Close()
 		return
 	}
@@ -208,25 +215,25 @@ func (this *Agent) SaveRegIds() {
 func (this *Agent) LoadRegIds() {
 	file, err := os.Open("RegIds." + this.deviceId)
 	if err != nil {
-		log.Printf("Open error: %s", err.Error())
+		log.Errorf("Open error: %s", err.Error())
 		return
 	}
 	buf := make([]byte, 1024)
 	n, err := file.Read(buf)
 	if err != nil {
-		log.Printf("Read file error: %s", err.Error())
+		log.Errorf("Read file error: %s", err.Error())
 		file.Close()
 		return
 	}
 
-	log.Printf("%s", buf)
+	log.Debugf("%s", buf)
 
 	err = json.Unmarshal(buf[:n], &this.RegIds)
 	if err != nil {
-		log.Printf("Unarshal error: %s", err.Error())
+		log.Errorf("Unarshal error: %s", err.Error())
 		file.Close()
 		return
 	}
 
-	log.Printf("RegIds: %s", this.RegIds)
+	log.Debugf("RegIds: %s", this.RegIds)
 }

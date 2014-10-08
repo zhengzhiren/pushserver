@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
+	//"log"
 	"net"
 	"net/rpc"
 	"os"
@@ -11,8 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	log "github.com/cihub/seelog"
+
 	"github.com/zhengzhiren/pushserver/simapp/receiverrpc"
 	"github.com/zhengzhiren/pushserver/simsdk/sdkrpc"
+)
+
+var (
+	Receiver receiverrpc.Receiver
 )
 
 func usage() {
@@ -21,8 +27,6 @@ func usage() {
 }
 
 func main() {
-	log.SetPrefix(os.Args[0])
-
 	var (
 		rpcPort      int
 		ip           string
@@ -61,12 +65,14 @@ func main() {
 
 	conn, err := net.DialTCP("tcp", nil, &raddr)
 	if err != nil {
-		log.Printf("Dial error: %s", err.Error())
+		log.Errorf("Dial error: %s", err.Error())
 		return
 	}
 	defer func() {
 		conn.Close()
 	}()
+
+	log.Info("Registing")
 
 	rpcClient := rpc.NewClient(conn)
 
@@ -79,7 +85,7 @@ func main() {
 	replyRegist := sdkrpc.ReplyRegist{}
 	err = rpcClient.Call("SDK.Regist", argRegist, &replyRegist)
 	if err != nil {
-		log.Printf("RPC error: %s", err.Error())
+		log.Errorf("RPC error: %s", err.Error())
 		return
 	}
 
@@ -87,34 +93,36 @@ func main() {
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL)
 
 	s := <-ch
-	log.Println("Received signal:", s)
+	log.Infof("Received signal: %v", s)
+	log.Info("Unregisting")
 	argUnregist := sdkrpc.ArgUnregist{
 		AppId:  appId,
 		AppKey: appKey,
+		RegId:  Receiver.RegId,
 	}
 	replyUnregist := sdkrpc.ReplyUnregist{}
 	err = rpcClient.Call("SDK.Unregist", argUnregist, &replyUnregist)
 }
 
 func RunReceiverRPC(port int) {
-	log.Printf("Starting Receiver RPC\n")
+	log.Info("Starting Receiver RPC\n")
 	laddr := net.TCPAddr{
 		IP:   net.ParseIP("0.0.0.0"),
 		Port: port,
 	}
 	ln, err := net.ListenTCP("tcp", &laddr)
 	if err != nil {
-		log.Printf("Failed to start RPC server: %s", err.Error())
+		log.Errorf("Failed to start RPC server: %s", err.Error())
 		return
 	}
 
-	receiver := receiverrpc.Receiver{}
-	rpc.Register(&receiver)
-	log.Printf("RPC server is listening on %s\n", laddr.String())
+	Receiver = receiverrpc.Receiver{}
+	rpc.Register(&Receiver)
+	log.Infof("RPC server is listening on %s\n", laddr.String())
 
 	defer func() {
 		// close the listener sock
-		log.Printf("Closing listener socket.\n")
+		log.Info("Closing listener socket.\n")
 		ln.Close()
 	}()
 
@@ -126,7 +134,7 @@ func RunReceiverRPC(port int) {
 				// just accept timeout, not an error
 				continue
 			}
-			log.Printf("Failed to accept: %s", err.Error())
+			log.Error("Failed to accept: %s", err.Error())
 			continue
 		}
 		rpc.ServeConn(conn)

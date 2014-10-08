@@ -1,9 +1,11 @@
 package sdkrpc
 
 import (
-	"log"
+	//"log"
 	"net"
 	"net/rpc"
+
+	log "github.com/cihub/seelog"
 
 	"github.com/zhengzhiren/pushserver/simsdk/agent"
 )
@@ -24,7 +26,7 @@ type ReplyRegist struct {
 }
 
 func (this *SDK) Regist(arg ArgRegist, reply *ReplyRegist) error {
-	log.Printf("RPC: Regist")
+	log.Info("RPC: Regist")
 	regId := arg.RegId
 	if regId == "" {
 		regId = this.Agent.RegIds[arg.AppId]
@@ -33,13 +35,14 @@ func (this *SDK) Regist(arg ArgRegist, reply *ReplyRegist) error {
 
 	conn, err := net.DialTCP("tcp", nil, &arg.ReceiverAddr)
 	if err != nil {
-		log.Printf("Dial error: %s", err.Error())
+		log.Errorf("Dial error: %s", err.Error())
 		return err
 	}
 
 	this.Receivers[arg.AppId] = rpc.NewClient(conn)
 	if this.Receivers[arg.AppId] == nil {
-		log.Fatal("client nil")
+		log.Errorf("client nil")
+		return nil
 	}
 	return nil
 }
@@ -54,7 +57,7 @@ type ReplyUnregist struct {
 }
 
 func (this *SDK) Unregist(arg ArgUnregist, reply *ReplyUnregist) error {
-	log.Printf("RPC: Unregist")
+	log.Infof("RPC: Unregist")
 	this.Agent.Unregist(arg.AppId, arg.AppKey, arg.RegId)
 	return nil
 }

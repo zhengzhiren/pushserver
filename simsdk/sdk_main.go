@@ -3,13 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
+	//"log"
 	"math/rand"
 	"net"
 	"net/rpc"
-	"os"
+	//"os"
 	"strconv"
 	"time"
+
+	log "github.com/cihub/seelog"
 
 	"github.com/zhengzhiren/pushserver/simapp/receiverrpc"
 	"github.com/zhengzhiren/pushserver/simsdk/agent"
@@ -28,8 +30,6 @@ func usage() {
 }
 
 func main() {
-	log.SetPrefix(os.Args[0])
-
 	flag.StringVar(&DeviceId, "i", "", "Device Id of this simsdk")
 	flag.IntVar(&RpcPort, "p", 9988, "RPC listen port for App")
 	flag.Parse()
@@ -50,11 +50,12 @@ func main() {
 
 	raddr, err := net.ResolveTCPAddr("tcp", dst)
 	if err != nil {
-		log.Printf("Unknown address: %s", err.Error())
+		log.Errorf("Unknown address: %v", err)
 		return
 	}
 	agent := agent.NewAgent(DeviceId, raddr)
 	agent.OnReceiveMsg = OnReceiveMsg
+	agent.OnRegResponse = OnRegResponse
 	go agent.Run()
 
 	//go RunRPC(RpcPort)
@@ -66,14 +67,14 @@ func main() {
 }
 
 func RunRPC(port int, agent *agent.Agent) {
-	log.Printf("Starting RPC server\n")
+	log.Info("Starting RPC server\n")
 	laddr := net.TCPAddr{
 		IP:   net.ParseIP("0.0.0.0"),
 		Port: port,
 	}
 	ln, err := net.ListenTCP("tcp", &laddr)
 	if err != nil {
-		log.Printf("Failed to start RPC server: %s", err.Error())
+		log.Errorf("Failed to start RPC server: %v", err)
 		return
 	}
 
@@ -82,11 +83,11 @@ func RunRPC(port int, agent *agent.Agent) {
 		Receivers: make(map[string]*rpc.Client),
 	}
 	rpc.Register(sdk)
-	log.Printf("RPC server is listening on %s\n", laddr.String())
+	log.Infof("RPC server is listening on %v\n", laddr.String())
 
 	defer func() {
 		// close the listener sock
-		log.Printf("Closing listener socket.\n")
+		log.Debug("Closing listener socket.\n")
 		ln.Close()
 	}()
 
@@ -98,10 +99,24 @@ func RunRPC(port int, agent *agent.Agent) {
 				// just accept timeout, not an error
 				continue
 			}
-			log.Printf("Failed to accept: %s", err.Error())
+			log.Errorf("Failed to accept: %s", err.Error())
 			continue
 		}
 		go rpc.ServeConn(conn)
+	}
+}
+
+func OnRegResponse(appId string, regId string, result int) {
+	client := sdk.Receivers[appId]
+	arg := receiverrpc.ArgOnRegResp{
+		AppId:  appId,
+		RegId:  regId,
+		Result: result,
+	}
+	reply := receiverrpc.ReplyOnRegResp{}
+	err := client.Call("Receiver.OnRegResp", arg, &reply)
+	if err != nil {
+		log.Errorf("RPC error OnRegResp [AppId: %s]. %v", appId, err)
 	}
 }
 
@@ -115,6 +130,6 @@ func OnReceiveMsg(appId string, msgId int64, msgType int, msg string) {
 	reply := receiverrpc.ReplyOnReceiveMsg{}
 	err := client.Call("Receiver.OnReceiveMsg", arg, &reply)
 	if err != nil {
-		log.Println(err)
+		log.Errorf("Failed to send message [AppId: %s, MsgId: %d]. %v", appId, msgId, err)
 	}
 }

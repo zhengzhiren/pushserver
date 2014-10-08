@@ -145,9 +145,9 @@ func HandleRegist(client *Client, pkt *packet.Pkt) {
 	log.Printf("Device [%s] regist AppID: %s", client.Id, dataRegist.AppId)
 
 	dataRegResp := packet.PktDataRegResp{
-		AppId: dataRegist.AppId,
-		RegId: dataRegist.AppId + "_XXX",
-		Result:0,
+		AppId:  dataRegist.AppId,
+		RegId:  dataRegist.AppId + "_XXX",
+		Result: 0,
 	}
 	pktRegResp, err := packet.Pack(packet.PKT_Regist_Resp, 0, &dataRegResp)
 	if err != nil {
@@ -175,7 +175,24 @@ func HandleUnregist(client *Client, pkt *packet.Pkt) {
 	}
 
 	log.Printf("Received Unregist. AppId: %s, AppKey: %s, RegId: %s",
-	dataUnreg.AppId, dataUnreg.AppKey, dataUnreg.RegId)
+		dataUnreg.AppId, dataUnreg.AppKey, dataUnreg.RegId)
+
+	dataUnregResp := packet.PktDataUnregResp{
+		AppId:  dataUnreg.AppId,
+		RegId:  dataUnreg.RegId,
+		Result: 0,
+	}
+	pktUnregResp, err := packet.Pack(packet.PKT_Unregist_Resp, 0, dataUnregResp)
+	if err != nil {
+		log.Printf("Pack Unreg_Resp error: %s", err.Error())
+		return
+	}
+	b, err := pktUnregResp.Serialize()
+	if err != nil {
+		log.Printf("Serialize error: %s", err.Error())
+		return
+	}
+	client.Conn.Write(b)
 }
 
 func HandleHeartbeat(client *Client, pkt *packet.Pkt) {
