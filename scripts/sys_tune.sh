@@ -13,4 +13,3 @@ sysctl -w net.ipv4.tcp_wmem="1024 4096 16384"
 sysctl -w net.ipv4.tcp_moderate_rcvbuf="0"
  
 sysctl -w net.ipv4.tcp_tw_recycle=1
-
