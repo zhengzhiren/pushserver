@@ -23,7 +23,8 @@ func HandleRegist_Resp(agent *Agent, pkt *packet.Pkt) {
 		log.Errorf("Error unpack pkt: %s", err.Error())
 	}
 
-	log.Infof("Received Regist_Resp AppId: [%s] RegId: [%s]", dataRegResp.AppId, dataRegResp.RegId)
+	log.Infof("Received Regist_Resp AppId: [%s] RegId: [%s] Result: %d",
+		dataRegResp.AppId, dataRegResp.RegId, dataRegResp.Result)
 	agent.RegIds[dataRegResp.AppId] = dataRegResp.RegId
 	agent.SaveRegIds()
 	if agent.OnRegResponse != nil {

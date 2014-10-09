@@ -48,7 +48,9 @@ func (this *Agent) Run() {
 
 	conn, err := net.DialTCP("tcp", nil, this.serverAddr)
 	if err != nil {
-		log.Error("Dial error: %s", err.Error())
+		log.Errorf("Dial %v error: %s", this.serverAddr, err.Error())
+		log.Flush()
+		os.Exit(1)
 		return
 	}
 	defer func() {
@@ -104,7 +106,7 @@ func (this *Agent) Run() {
 		//	// continue read
 		//}
 
-		const readTimeout = 100 * time.Millisecond
+		const readTimeout = 30 * time.Second
 		conn.SetReadDeadline(time.Now().Add(readTimeout))
 
 		// read the packet header
@@ -138,7 +140,7 @@ func (this *Agent) Run() {
 					return
 				} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 					// read timeout
-					//TODO
+					//TODO: exit?
 					log.Errorf("Timeout on receiving packet data. error: %s\n", err.Error())
 					continue
 				}
@@ -213,9 +215,10 @@ func (this *Agent) SaveRegIds() {
 }
 
 func (this *Agent) LoadRegIds() {
-	file, err := os.Open("RegIds." + this.deviceId)
+	fileName := "RegIds." + this.deviceId
+	file, err := os.Open(fileName)
 	if err != nil {
-		log.Errorf("Open error: %s", err.Error())
+		log.Warnf("Open error: %s", err.Error())
 		return
 	}
 	buf := make([]byte, 1024)
@@ -226,11 +229,11 @@ func (this *Agent) LoadRegIds() {
 		return
 	}
 
-	log.Debugf("%s", buf)
+	//log.Debugf("content in %s: %s", fileName, buf)
 
 	err = json.Unmarshal(buf[:n], &this.RegIds)
 	if err != nil {
-		log.Errorf("Unarshal error: %s", err.Error())
+		log.Errorf("Unarshal %s error: %s", fileName, err.Error())
 		file.Close()
 		return
 	}

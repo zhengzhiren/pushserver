@@ -107,7 +107,15 @@ func RunRPC(port int, agent *agent.Agent) {
 }
 
 func OnRegResponse(appId string, regId string, result int) {
+	if result != 0 {
+		log.Warnf("RegResponse error. AppId: %s, RegId: %s, Result: %d", appId, regId, result)
+		return
+	}
 	client := sdk.Receivers[appId]
+	if client == nil {
+		log.Errorf("No client has AppId: %s", appId)
+		return
+	}
 	arg := receiverrpc.ArgOnRegResp{
 		AppId:  appId,
 		RegId:  regId,
@@ -122,6 +130,10 @@ func OnRegResponse(appId string, regId string, result int) {
 
 func OnReceiveMsg(appId string, msgId int64, msgType int, msg string) {
 	client := sdk.Receivers[appId]
+	if client == nil {
+		log.Errorf("Received msg bug no client has AppId: %s", appId)
+		return
+	}
 	arg := receiverrpc.ArgOnReceiveMsg{
 		MsgId:   msgId,
 		MsgType: msgType,

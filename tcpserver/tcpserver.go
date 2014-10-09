@@ -14,7 +14,7 @@ type TcpServer struct {
 	exitChan    chan bool
 	waitGroup   *sync.WaitGroup
 	pktHandlers map[uint8]PktHandler
-	port int
+	port        int
 }
 
 func Create(port int) *TcpServer {
@@ -22,7 +22,7 @@ func Create(port int) *TcpServer {
 		exitChan:    make(chan bool),
 		waitGroup:   &sync.WaitGroup{},
 		pktHandlers: map[uint8]PktHandler{},
-		port: port,
+		port:        port,
 	}
 	server.pktHandlers[packet.PKT_Regist] = HandleRegist
 	server.pktHandlers[packet.PKT_Unregist] = HandleUnregist
@@ -33,8 +33,8 @@ func Create(port int) *TcpServer {
 
 func (this *TcpServer) Start() {
 	log.Printf("Starting TcpServer\n")
-	laddr := net.TCPAddr {
-		IP: net.ParseIP("0.0.0.0"),
+	laddr := net.TCPAddr{
+		IP:   net.ParseIP("0.0.0.0"),
 		Port: this.port,
 	}
 	ln, err := net.ListenTCP("tcp", &laddr)
@@ -103,7 +103,7 @@ func (this *TcpServer) handleConn(conn *net.TCPConn) {
 			// continue read
 		}
 
-		const readTimeout = 100 * time.Millisecond
+		const readTimeout = 30 * time.Second
 		conn.SetReadDeadline(time.Now().Add(readTimeout))
 
 		// read the packet header

@@ -6,6 +6,8 @@ import (
 	log "github.com/cihub/seelog"
 )
 
+var lastMsgId int64 = 0
+
 type Receiver struct {
 	RegId string
 }
@@ -22,6 +24,11 @@ type ReplyOnReceiveMsg struct {
 func (this *Receiver) OnReceiveMsg(arg ArgOnReceiveMsg, reply *ReplyOnReceiveMsg) error {
 	log.Trace("RPC: OnReceiveMsg")
 	log.Infof("Received message. MsgId: %d, MsgType: %d, Msg: %s", arg.MsgId, arg.MsgType, arg.Msg)
+	if lastMsgId == 0 {
+		lastMsgId = arg.MsgId
+	} else if lastMsgId >= arg.MsgId {
+		log.Errorf("Received bad message Id: %d, LastMsgId: %d", arg.MsgId, lastMsgId)
+	}
 	return nil
 }
 

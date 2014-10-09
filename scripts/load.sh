@@ -1,8 +1,8 @@
 #!/bin/bash
 
 SCRIPT=$0
-DEVICE_COUNT=5
-APP_COUNT=3
+DEVICE_COUNT=1
+APP_COUNT=1
 LOOP=0
 
 DEVICE_ID="device_"
@@ -23,19 +23,32 @@ function HELP {
   echo "${REV}-f${NORM}  --Start and kill the applications frequently."
   echo -e "${REV}-h${NORM}  --Displays this help message. No further functions are performed."\\n
   echo -e "Example: ${BOLD}$SCRIPT -a 5 -d 10 127.0.0.1 9999${NORM}"\\n
+  echo -e "Example: ${BOLD}$SCRIPT 10.135.28.70 20000 10.135.28.72 20000${NORM}"\\n
   exit 1
 }
 
 function RUN {
-	i=0
-	while [ $i -lt $DEVICE_COUNT ]; do
+	i=1
+	while [ $i -le $DEVICE_COUNT ]; do
 		TEMP_PORT=$(($SDK_PORT+$i))
 		DEV_ID=$DEVICE_ID$i
-		echo "Starting Device [$DEV_ID]"
-		simsdk -i "$DEV_ID" -p $TEMP_PORT $IP:$PORT > "$DEV_ID.out"&
-		j=0
-		while [ $j -lt $APP_COUNT ]; do
-			APP_ID="app_$j"
+		# randomly choose a push server
+		index=$(($RANDOM%$SERVER_COUNT))
+		PUSHIP=${IPPORT[${index}*2]}
+		PUSHPORT=${IPPORT[${index}*2+1]}
+		echo "Device [$DEV_ID] is connecting $PUSHIP:$PUSHPORT"
+		simsdk -i "$DEV_ID" -p $TEMP_PORT $PUSHIP:$PUSHPORT > "$DEV_ID.out"&
+		let i=i+1
+	done
+
+	sleep 5  #sleep a while to let the simsdk get ready
+	i=1
+	while [ $i -le $DEVICE_COUNT ]; do
+		TEMP_PORT=$(($SDK_PORT+$i))
+		DEV_ID=$DEVICE_ID$i
+		j=1
+		while [ $j -le $APP_COUNT ]; do
+			APP_ID="testapp$j"
 			echo "Starting APP [$APP_ID] on Device [$DEV_ID]"
 			simapp -p $TEMP_PORT -r $(($APP_PORT+$i*$APP_COUNT+$j)) "$APP_ID" "AppKey_$j" > "$DEV_ID-$APP_ID.out" &
 			let j=j+1
@@ -81,12 +94,16 @@ done
 
 shift $((OPTIND-1))  #This tells getopts to move on to the next argument.
 
-if [ $# -ne 2 ]; then
+if [ $# -eq 0 -o $(($#%2)) -ne 0 ]; then
 	HELP
 fi
 
-IP=$1
-PORT=$2
+IPPORT=("$@")
+SERVER_COUNT=$((${#IPPORT[@]}/2))
+
+#echo $@
+#echo ${IPPORT[@]}
+echo "$SERVER_COUNT servers: ${IPPORT[@]}"
 
 trap BASHTRAP INT
 
@@ -94,8 +111,11 @@ if [ $LOOP -eq 1 ]; then
 	while :
 	do
 		RUN
+		sleep 2
 		STOP
 	done
 else
 	RUN
+	echo "Press CTRL+C to stop all Apps"
+	sleep 3600
 fi
