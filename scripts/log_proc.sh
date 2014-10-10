@@ -17,11 +17,15 @@ done
 
 PASS=1
 for f in $( ls device_*-*.out.msg ); do
-	echo "Comparing \"$file\" with \"$f\"..."
-	cmp -s $file $f
-	if [ $? -ne 0 ]; then
-		echo "Error! Different file content: ${REV}\"$file\"${NORM} ${REV}\"$f\"${NORM}"
-		PASS=0
+	if [ ! -s $f ]; then
+		echo "Error! ${REV}$f${NORM} is empty"
+	else
+		echo "Comparing \"$file\" with \"$f\"..."
+		cmp -s $file $f
+		if [ $? -ne 0 ]; then
+			echo "Error! Different file content: ${REV}\"$file\"${NORM} ${REV}\"$f\"${NORM}"
+			PASS=0
+		fi
 	fi
 done
 

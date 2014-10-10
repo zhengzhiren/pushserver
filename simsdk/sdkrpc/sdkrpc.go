@@ -16,24 +16,25 @@ type SDK struct {
 }
 
 type ArgRegist struct {
-	AppId        string
-	AppKey       string
-	RegId        string
-	ReceiverAddr net.TCPAddr // RPC address for Receiver
+	AppId   string
+	AppKey  string
+	RegId   string
+	AppAddr *net.UnixAddr // RPC address for Receiver
 }
 
 type ReplyRegist struct {
 }
 
 func (this *SDK) Regist(arg ArgRegist, reply *ReplyRegist) error {
-	log.Info("RPC: Regist")
+	log.Info("RPC: Regist. AppId: %s, AppKey: %s, RegId: %s, AppAddr: %v",
+		arg.AppId, arg.AppKey, arg.RegId, arg.AppAddr)
 	regId := arg.RegId
 	if regId == "" {
 		regId = this.Agent.RegIds[arg.AppId]
 	}
 	this.Agent.Regist(arg.AppId, arg.AppKey, regId)
 
-	conn, err := net.DialTCP("tcp", nil, &arg.ReceiverAddr)
+	conn, err := net.DialUnix("unix", nil, arg.AppAddr)
 	if err != nil {
 		log.Errorf("Dial error: %s", err.Error())
 		return err

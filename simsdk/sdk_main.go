@@ -4,11 +4,11 @@ import (
 	"flag"
 	"fmt"
 	//"log"
-	"math/rand"
 	"net"
 	"net/rpc"
-	//"os"
-	"strconv"
+	"os"
+	//"os/signal"
+	//"syscall"
 	"time"
 
 	log "github.com/cihub/seelog"
@@ -19,34 +19,28 @@ import (
 )
 
 var (
-	DeviceId = ""
-	RpcPort  int
-	sdk      *sdkrpc.SDK
+	DeviceId   = ""
+	UnixDomain string
+	sdk        *sdkrpc.SDK
 )
 
 func usage() {
 	fmt.Printf("Usage:\n")
-	fmt.Printf("simsdk <-i device_id> [-p rpc_port] <ip:port>\n")
+	fmt.Printf("simsdk <device_id> <ip:port>\n")
 }
 
 func main() {
-	flag.StringVar(&DeviceId, "i", "", "Device Id of this simsdk")
-	flag.IntVar(&RpcPort, "p", 9988, "RPC listen port for App")
 	flag.Parse()
-
-	if flag.NArg() != 1 {
-		fmt.Printf("missing ip:port\n")
+	if flag.NArg() != 2 {
 		usage()
 		return
 	}
 
-	dst := flag.Args()[0]
+	DeviceId := flag.Args()[0]
+	dst := flag.Args()[1]
 
-	if DeviceId == "" {
-		rand.Seed(time.Now().Unix())
-		DeviceId = strconv.Itoa(rand.Int() % 10000) // a random Id
-	}
-	fmt.Printf("Device Id: [%s], RPC port: [%d]\n", DeviceId, RpcPort)
+	UnixDomain = "/tmp/simsdk_" + DeviceId // for RPC
+	fmt.Printf("Device Id: [%s], Unix Domain: [%s]\n", DeviceId, UnixDomain)
 
 	raddr, err := net.ResolveTCPAddr("tcp", dst)
 	if err != nil {
@@ -58,21 +52,22 @@ func main() {
 	agent.OnRegResponse = OnRegResponse
 	go agent.Run()
 
-	//go RunRPC(RpcPort)
-	RunRPC(RpcPort, agent)
+	RunRPC(agent)
 
-	//	ch := make(chan os.Signal)
-	//	signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL)
-	//	s := <-ch
+	//ch := make(chan os.Signal)
+	//signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL)
+	//s := <-ch
+
 }
 
-func RunRPC(port int, agent *agent.Agent) {
+func RunRPC(agent *agent.Agent) {
 	log.Info("Starting RPC server\n")
-	laddr := net.TCPAddr{
-		IP:   net.ParseIP("0.0.0.0"),
-		Port: port,
+	unixAddr, err := net.ResolveUnixAddr("unix", UnixDomain)
+	if err != nil {
+		log.Errorf("ResolveUnixAddr error: %s", err.Error())
+		return
 	}
-	ln, err := net.ListenTCP("tcp", &laddr)
+	ln, err := net.ListenUnix("unix", unixAddr)
 	if err != nil {
 		log.Errorf("Failed to start RPC server: %v", err)
 		return
@@ -83,17 +78,18 @@ func RunRPC(port int, agent *agent.Agent) {
 		Receivers: make(map[string]*rpc.Client),
 	}
 	rpc.Register(sdk)
-	log.Infof("RPC server is listening on %v\n", laddr.String())
+	log.Infof("RPC server is listening on unix domain: %s\n", UnixDomain)
 
 	defer func() {
 		// close the listener sock
 		log.Debug("Closing listener socket.\n")
 		ln.Close()
+		os.Remove(UnixDomain)
 	}()
 
 	for {
 		ln.SetDeadline(time.Now().Add(time.Second))
-		conn, err := ln.AcceptTCP()
+		conn, err := ln.AcceptUnix()
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				// just accept timeout, not an error

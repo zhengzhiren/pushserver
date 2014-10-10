@@ -6,8 +6,6 @@ APP_COUNT=1
 LOOP=0
 
 DEVICE_ID="device_"
-SDK_PORT=13000
-APP_PORT=31000
 
 #Set fonts for Help.
 NORM=`tput sgr0`
@@ -30,27 +28,25 @@ function HELP {
 function RUN {
 	i=1
 	while [ $i -le $DEVICE_COUNT ]; do
-		TEMP_PORT=$(($SDK_PORT+$i))
 		DEV_ID=$DEVICE_ID$i
 		# randomly choose a push server
 		index=$(($RANDOM%$SERVER_COUNT))
 		PUSHIP=${IPPORT[${index}*2]}
 		PUSHPORT=${IPPORT[${index}*2+1]}
 		echo "Device [$DEV_ID] is connecting $PUSHIP:$PUSHPORT"
-		simsdk -i "$DEV_ID" -p $TEMP_PORT $PUSHIP:$PUSHPORT > "$DEV_ID.out"&
+		simsdk "$DEV_ID" $PUSHIP:$PUSHPORT > "$DEV_ID.out"&
 		let i=i+1
 	done
 
 	sleep 5  #sleep a while to let the simsdk get ready
 	i=1
 	while [ $i -le $DEVICE_COUNT ]; do
-		TEMP_PORT=$(($SDK_PORT+$i))
 		DEV_ID=$DEVICE_ID$i
 		j=1
 		while [ $j -le $APP_COUNT ]; do
 			APP_ID="testapp$j"
 			echo "Starting APP [$APP_ID] on Device [$DEV_ID]"
-			simapp -p $TEMP_PORT -r $(($APP_PORT+$i*$APP_COUNT+$j)) "$APP_ID" "AppKey_$j" > "$DEV_ID-$APP_ID.out" &
+			simapp "$DEV_ID" "$APP_ID" "AppKey_$j" > "$DEV_ID-$APP_ID.out" &
 			let j=j+1
 		done
 		let i=i+1
@@ -60,6 +56,7 @@ function RUN {
 STOP()
 {
 	killall simsdk simapp
+	rm /tmp/simsdk_$DEVICE_ID*
 }
 
 BASHTRAP()
