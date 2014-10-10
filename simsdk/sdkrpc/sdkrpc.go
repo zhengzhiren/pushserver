@@ -26,13 +26,8 @@ type ReplyRegist struct {
 }
 
 func (this *SDK) Regist(arg ArgRegist, reply *ReplyRegist) error {
-	log.Info("RPC: Regist. AppId: %s, AppKey: %s, RegId: %s, AppAddr: %v",
+	log.Infof("RPC: Regist. AppId: %s, AppKey: %s, RegId: %s, AppAddr: %v",
 		arg.AppId, arg.AppKey, arg.RegId, arg.AppAddr)
-	regId := arg.RegId
-	if regId == "" {
-		regId = this.Agent.RegIds[arg.AppId]
-	}
-	this.Agent.Regist(arg.AppId, arg.AppKey, regId)
 
 	conn, err := net.DialUnix("unix", nil, arg.AppAddr)
 	if err != nil {
@@ -45,6 +40,12 @@ func (this *SDK) Regist(arg ArgRegist, reply *ReplyRegist) error {
 		log.Errorf("client nil")
 		return nil
 	}
+
+	regId := arg.RegId
+	if regId == "" {
+		regId = this.Agent.RegIds[arg.AppId]
+	}
+	this.Agent.Regist(arg.AppId, arg.AppKey, regId)
 	return nil
 }
 

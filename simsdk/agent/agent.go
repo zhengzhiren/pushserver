@@ -106,7 +106,7 @@ func (this *Agent) Run() {
 		//	// continue read
 		//}
 
-		const readTimeout = 30 * time.Second
+		const readTimeout = 300 * time.Second
 		conn.SetReadDeadline(time.Now().Add(readTimeout))
 
 		// read the packet header

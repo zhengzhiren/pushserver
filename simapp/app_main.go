@@ -53,7 +53,8 @@ func main() {
 
 	go RunReceiverRPC()
 
-	time.Sleep(100 * time.Millisecond)
+	// sleep to get RPC prepared
+	time.Sleep(5 * time.Second)
 
 	conn, err := net.DialUnix("unix", nil, raddr)
 	if err != nil {

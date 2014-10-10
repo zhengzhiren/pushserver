@@ -23,7 +23,7 @@ for f in $( ls device_*-*.out.msg ); do
 		echo "Comparing \"$file\" with \"$f\"..."
 		cmp -s $file $f
 		if [ $? -ne 0 ]; then
-			echo "Error! Different file content: ${REV}\"$file\"${NORM} ${REV}\"$f\"${NORM}"
+			echo "Error! Different file content: ${REV}$file${NORM} ${REV}$f${NORM}"
 			PASS=0
 		fi
 	fi

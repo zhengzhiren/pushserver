@@ -40,7 +40,7 @@ func main() {
 	dst := flag.Args()[1]
 
 	UnixDomain = "/tmp/simsdk_" + DeviceId // for RPC
-	fmt.Printf("Device Id: [%s], Unix Domain: [%s]\n", DeviceId, UnixDomain)
+	fmt.Printf("Device Id: [%s], Unix Domain: [%s], Push server: %s\n", DeviceId, UnixDomain, dst)
 
 	raddr, err := net.ResolveTCPAddr("tcp", dst)
 	if err != nil {
