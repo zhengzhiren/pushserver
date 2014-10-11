@@ -18,6 +18,7 @@ function HELP {
   echo "Options:"
   echo "${REV}-a${NORM}  --Sets the ${BOLD}App count on each device${NORM}. Default is ${BOLD}3${NORM}."
   echo "${REV}-d${NORM}  --Sets the ${BOLD}device count${NORM}. Default is ${BOLD}5${NORM}."
+  echo "${REV}-i${NORM}  --Sets the ${BOLD}prefix of device Id${NORM}. Default is ${BOLD}devcie_${NORM}."
   echo "${REV}-f${NORM}  --Start and kill the applications frequently."
   echo -e "${REV}-h${NORM}  --Displays this help message. No further functions are performed."\\n
   echo -e "Example: ${BOLD}$SCRIPT -a 5 -d 10 127.0.0.1 9999${NORM}"\\n
@@ -34,7 +35,7 @@ function RUN {
 		PUSHIP=${IPPORT[${index}*2]}
 		PUSHPORT=${IPPORT[${index}*2+1]}
 		echo "Device [$DEV_ID] is connecting $PUSHIP:$PUSHPORT"
-		simsdk "$DEV_ID" $PUSHIP:$PUSHPORT > "$DEV_ID.out"&
+		./simsdk "$DEV_ID" $PUSHIP:$PUSHPORT > "$DEV_ID.out"&
 		let i=i+1
 	done
 
@@ -46,7 +47,7 @@ function RUN {
 		while [ $j -le $APP_COUNT ]; do
 			APP_ID="testapp$j"
 			echo "Starting APP [$APP_ID] on Device [$DEV_ID]"
-			simapp "$DEV_ID" "$APP_ID" "AppKey_$j" > "$DEV_ID-$APP_ID.out" &
+			./simapp "$DEV_ID" "$APP_ID" "AppKey_$j" > "$DEV_ID-$APP_ID.out" &
 			let j=j+1
 		done
 		let i=i+1
@@ -67,7 +68,7 @@ BASHTRAP()
 }
 
 #process the command arguments
-while getopts "d:a:fh" arg
+while getopts "d:a:i:fh" arg
 do
 	case $arg in
 		a)
@@ -75,6 +76,9 @@ do
 		;;
 		d)
 		DEVICE_COUNT=$OPTARG
+		;;
+		i)
+		DEVICE_ID=$OPTARG
 		;;
 		f)
 		LOOP=1

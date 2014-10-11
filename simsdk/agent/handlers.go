@@ -12,7 +12,15 @@ type PktHandler func(agent *Agent, pkt *packet.Pkt)
 
 // Received response for the init packet
 func HandleInit_Resp(agent *Agent, pkt *packet.Pkt) {
-	log.Info("Received Init_Resp")
+	dataInitResp := packet.PktDataInitResp{}
+	err := packet.Unpack(pkt, &dataInitResp)
+	if err != nil {
+		log.Errorf("Error unpack pkt: %s", err.Error())
+	}
+	log.Infof("Received Init_Resp. Result: %d", dataInitResp.Result)
+	if dataInitResp.Result != 0 {
+		log.Errorf("Device Init failed!")
+	}
 }
 
 // Received response for the regist packet
