@@ -16,6 +16,7 @@ func HandleInit_Resp(agent *Agent, pkt *packet.Pkt) {
 	err := packet.Unpack(pkt, &dataInitResp)
 	if err != nil {
 		log.Errorf("Error unpack pkt: %s", err.Error())
+		return
 	}
 	log.Infof("Received Init_Resp. Result: %d", dataInitResp.Result)
 	if dataInitResp.Result != 0 {
