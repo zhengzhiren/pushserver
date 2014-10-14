@@ -95,6 +95,7 @@ type PktDataRegist struct {
 	AppId  string `json:"appid"`
 	AppKey string `json:"appkey"`
 	RegId  string `json:"regid"`
+	Token  string `json:"token"`
 }
 
 type PktDataRegResp struct {
@@ -107,6 +108,7 @@ type PktDataUnregist struct {
 	AppId  string `json:"appid"`
 	AppKey string `json:"appkey"`
 	RegId  string `json:"regid"`
+	Token  string `json:"token"`
 }
 
 type PktDataUnregResp struct {

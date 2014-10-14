@@ -22,15 +22,18 @@ var (
 	deviceId string
 	appId    string
 	appKey   string
+	token    string
 	appAddr  *net.UnixAddr
 )
 
 func usage() {
 	fmt.Printf("Usage:\n")
-	fmt.Printf("simapp <device_id> <app_id> <app_key>\n")
+	fmt.Printf("simapp -t [token] <device_id> <app_id> <app_key>\n")
 }
 
 func main() {
+
+	flag.StringVar(&token, "t", "", "user sso token")
 	flag.Parse()
 	if flag.NArg() != 3 {
 		usage()
@@ -74,6 +77,7 @@ func main() {
 		AppId:   appId,
 		AppKey:  appKey,
 		AppAddr: appAddr,
+		Token:   token,
 	}
 	replyRegist := sdkrpc.ReplyRegist{}
 	err = rpcClient.Call("SDK.Regist", argRegist, &replyRegist)
@@ -92,6 +96,7 @@ func main() {
 		AppId:  appId,
 		AppKey: appKey,
 		RegId:  Receiver.RegId,
+		Token:  token,
 	}
 	replyUnregist := sdkrpc.ReplyUnregist{}
 	err = rpcClient.Call("SDK.Unregist", argUnregist, &replyUnregist)

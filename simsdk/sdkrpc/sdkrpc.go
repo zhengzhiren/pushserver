@@ -19,6 +19,7 @@ type ArgRegist struct {
 	AppId   string
 	AppKey  string
 	RegId   string
+	Token   string
 	AppAddr *net.UnixAddr // RPC address for Receiver
 }
 
@@ -45,7 +46,7 @@ func (this *SDK) Regist(arg ArgRegist, reply *ReplyRegist) error {
 	if regId == "" {
 		regId = this.Agent.RegIds[arg.AppId]
 	}
-	this.Agent.Regist(arg.AppId, arg.AppKey, regId)
+	this.Agent.Regist(arg.AppId, arg.AppKey, regId, arg.Token)
 	return nil
 }
 
@@ -53,6 +54,7 @@ type ArgUnregist struct {
 	AppId  string
 	AppKey string
 	RegId  string
+	Token  string
 }
 
 type ReplyUnregist struct {
@@ -60,6 +62,6 @@ type ReplyUnregist struct {
 
 func (this *SDK) Unregist(arg ArgUnregist, reply *ReplyUnregist) error {
 	log.Infof("RPC: Unregist")
-	this.Agent.Unregist(arg.AppId, arg.AppKey, arg.RegId)
+	this.Agent.Unregist(arg.AppId, arg.AppKey, arg.RegId, arg.Token)
 	return nil
 }

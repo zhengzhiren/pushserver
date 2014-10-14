@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -10,11 +11,9 @@ import (
 	"strconv"
 	"syscall"
 	"time"
-	"encoding/json"
 
 	"github.com/zhengzhiren/pushserver/simsdk/agent"
 )
-
 
 var (
 	RegIds   = make(map[string]string)
@@ -76,7 +75,7 @@ func main() {
 	go agent.Run()
 
 	for appid, _ := range RegIds {
-		agent.Regist(appid, appid+"key", RegIds[appid])
+		agent.Regist(appid, appid+"key", RegIds[appid], "")
 	}
 
 	ch := make(chan os.Signal)
@@ -87,7 +86,7 @@ func main() {
 		if len(RegIds) > 0 {
 			for appid, regid := range RegIds {
 				log.Printf("Unregist AppId: [%s], RegId: [%s]", appid, regid)
-				agent.Unregist(appid, "tempkey", RegIds[appid])
+				agent.Unregist(appid, "tempkey", RegIds[appid], "")
 				delete(RegIds, appid)
 				break
 			}
@@ -99,7 +98,7 @@ func main() {
 }
 
 func SaveRegIds() {
-	file, err := os.OpenFile("RegIds.txt", os.O_RDWR | os.O_CREATE, 0666)
+	file, err := os.OpenFile("RegIds.txt", os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		log.Printf("OpenFile error: %s", err.Error())
 		return
@@ -130,7 +129,7 @@ func LoadRegIds() {
 
 	log.Printf("%s", buf)
 
-	regIds := map[string]string {}
+	regIds := map[string]string{}
 	err = json.Unmarshal(buf[:n], &regIds)
 	if err != nil {
 		log.Printf("Unarshal error: %s", err.Error())

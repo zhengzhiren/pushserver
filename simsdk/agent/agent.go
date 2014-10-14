@@ -168,12 +168,13 @@ func (this *Agent) handlePacket(pkt *packet.Pkt) {
 	}
 }
 
-func (this *Agent) Regist(appid string, appkey string, regid string) {
+func (this *Agent) Regist(appid string, appkey string, regid string, token string) {
 	log.Infof("Regist AppId: %s, AppKey: %s, RegId: %s", appid, appkey, regid)
 	dataRegist := packet.PktDataRegist{
 		AppId:  appid,
 		RegId:  regid,
 		AppKey: appkey,
+		Token:  token,
 	}
 	pktRegist, err := packet.Pack(packet.PKT_Regist, 0, &dataRegist)
 	if err != nil {
@@ -183,12 +184,13 @@ func (this *Agent) Regist(appid string, appkey string, regid string) {
 	this.SendPkt(pktRegist)
 }
 
-func (this *Agent) Unregist(appid string, appkey string, regid string) {
+func (this *Agent) Unregist(appid string, appkey string, regid string, token string) {
 	log.Infof("Unregist AppId: %s, AppKey: %s, RegId: %s", appid, appkey, regid)
 	dataUnregist := packet.PktDataUnregist{
 		AppId:  appid,
 		AppKey: appkey,
 		RegId:  regid,
+		Token:  token,
 	}
 	pktUnregist, err := packet.Pack(packet.PKT_Unregist, 0, dataUnregist)
 	if err != nil {
